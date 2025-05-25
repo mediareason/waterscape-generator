@@ -38,12 +38,55 @@ let params = {
 
 let canvas;
 
+// Performance optimizations
+let textureCache = new Map();
+let reusableGraphics = null;
+
 // Gaussian random number generator for natural variation
 function gaussianRandom(mean = 0, stdev = 1) {
     const u = 1 - Math.random();
     const v = Math.random();
     const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
     return z * stdev + mean;
+}
+
+// OPTIMIZED: Create or get cached texture pattern
+function getTexturePattern(density, intensity, w, h) {
+    let cacheKey = `texture_${density}_${intensity}_${w}_${h}`;
+    
+    if (textureCache.has(cacheKey)) {
+        return textureCache.get(cacheKey);
+    }
+    
+    console.log(`Creating new texture pattern: ${density} circles`);
+    let texturePattern = createGraphics(w, h);
+    texturePattern.background(255);
+    texturePattern.noStroke();
+    
+    // Reduced circle count for performance
+    let circleCount = Math.min(density / 10, 200); // Max 200 circles per pattern
+    
+    for (let i = 0; i < circleCount; i++) {
+        let tx = random(w);
+        let ty = random(h);
+        let radius = abs(gaussianRandom(w * 0.015, w * 0.01));
+        let opacity = random(intensity * 150); // Reduced opacity range
+        
+        texturePattern.fill(0, opacity);
+        texturePattern.circle(tx, ty, radius);
+    }
+    
+    // Cache the pattern
+    textureCache.set(cacheKey, texturePattern);
+    return texturePattern;
+}
+
+// OPTIMIZED: Get or create reusable graphics buffer
+function getReusableGraphics(w, h) {
+    if (!reusableGraphics || reusableGraphics.width !== w || reusableGraphics.height !== h) {
+        reusableGraphics = createGraphics(w, h);
+    }
+    return reusableGraphics;
 }
 
 // Color picker functions
@@ -204,8 +247,8 @@ function createWatercolorBrush() {
     }
 }
 
-// Draw watercolor layer with working texture masking
-function drawWatercolorLayer(brush) {
+// OPTIMIZED: Draw watercolor layer with performance improvements
+function drawWatercolorLayer(brush, texturePattern = null) {
     try {
         if (!brush) return;
         
@@ -218,9 +261,10 @@ function drawWatercolorLayer(brush) {
         // Apply minor additional deformation
         layerPolygon = deformPolygon(layerPolygon, 2, params.deformStrength * 0.5);
         
-        if (params.textureMasking) {
-            // Create colored layer graphics buffer
-            let layerGraphics = createGraphics(width, height);
+        if (params.textureMasking && texturePattern) {
+            // Use reusable graphics buffer instead of creating new one
+            let layerGraphics = getReusableGraphics(width, height);
+            layerGraphics.clear();
             
             // Draw the blob shape in solid color
             layerGraphics.fill(brush.r, brush.g, brush.b);
@@ -231,25 +275,12 @@ function drawWatercolorLayer(brush) {
             }
             layerGraphics.endShape(CLOSE);
             
-            // Apply texture directly to the layer using blend mode
+            // Apply cached texture pattern
             layerGraphics.blendMode(MULTIPLY);
-            layerGraphics.noStroke();
-            
-            // Add texture circles for variation
-            for (let i = 0; i < params.textureDensity / 20; i++) { // Reduced density for performance
-                let tx = random(width);
-                let ty = random(height);
-                let radius = abs(gaussianRandom(width * 0.015, width * 0.01));
-                let opacity = random(params.textureIntensity * 255);
-                
-                layerGraphics.fill(255, opacity);
-                layerGraphics.circle(tx, ty, radius);
-            }
-            
-            // Reset blend mode
+            layerGraphics.image(texturePattern, 0, 0);
             layerGraphics.blendMode(BLEND);
             
-            // Draw the textured layer onto the main canvas with low opacity
+            // Draw the textured layer onto the main canvas
             tint(255, params.opacity);
             blendMode(MULTIPLY);
             image(layerGraphics, 0, 0);
@@ -274,10 +305,18 @@ function drawWatercolorLayer(brush) {
 }
 
 function generateWaterscape() {
+    let startTime = performance.now();
+    
     try {
         console.log("🎨 Generating waterscape...", params);
         
         randomSeed(params.randomSeed);
+        
+        // Clear texture cache if parameters changed
+        if (textureCache.size > 5) {
+            textureCache.clear();
+            console.log("🧹 Cleared texture cache");
+        }
         
         // Clear canvas
         background(255);
@@ -298,18 +337,30 @@ function generateWaterscape() {
             throw new Error("No brushes created");
         }
         
-        // Draw layers
+        // OPTIMIZED: Create texture pattern once if needed
+        let texturePattern = null;
+        if (params.textureMasking) {
+            texturePattern = getTexturePattern(
+                params.textureDensity, 
+                params.textureIntensity, 
+                width, 
+                height
+            );
+        }
+        
+        // Draw layers with optimized texture application
         console.log(`🎨 Drawing ${params.layersPerBrush} layers per brush with texture masking: ${params.textureMasking}`);
         for (let layer = 0; layer < params.layersPerBrush; layer++) {
             for (let brush of brushes) {
-                drawWatercolorLayer(brush);
+                drawWatercolorLayer(brush, texturePattern);
             }
         }
         
         // Update metadata
         updateMetadata();
         
-        console.log("🎨 Generation complete!");
+        let endTime = performance.now();
+        console.log(`🎨 Generation complete in ${(endTime - startTime).toFixed(1)}ms!`);
         
     } catch (error) {
         console.error('❌ Generation error:', error);
