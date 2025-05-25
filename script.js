@@ -1,4 +1,4 @@
-console.log("🎨 Waterscape Studio v2.0 initializing...");
+console.log("🎨 Waterscape Studio v2.1 initializing...");
 
 // Color palettes - now editable
 let palettes = {
@@ -29,10 +29,76 @@ let params = {
     deformStrength: 0.3,
     opacity: 8,
     randomSeed: 42,
-    backgroundType: 'white'
+    backgroundType: 'white',
+    // New texture masking parameters
+    textureMasking: true,
+    textureIntensity: 0.7,
+    textureDensity: 800
 };
 
 let canvas;
+
+// Gaussian random number generator for natural variation
+function gaussianRandom(mean = 0, stdev = 1) {
+    const u = 1 - Math.random();
+    const v = Math.random();
+    const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    return z * stdev + mean;
+}
+
+// Create texture mask graphics buffer
+function createTextureMask(w, h, circleCount, intensity) {
+    let textureMask = createGraphics(w, h);
+    
+    // Start with black background (fully transparent mask)
+    textureMask.background(0);
+    textureMask.noStroke();
+    
+    // Add random circles with varying opacity to create texture
+    for (let i = 0; i < circleCount; i++) {
+        let x = random(w);
+        let y = random(h);
+        let radius = abs(gaussianRandom(w * 0.015, w * 0.01));
+        let opacity = random(intensity * 255);
+        
+        textureMask.fill(255, opacity);
+        textureMask.circle(x, y, radius);
+    }
+    
+    return textureMask;
+}
+
+// Create blob shape mask from polygon
+function createBlobMask(w, h, vertices, layerOpacity) {
+    let blobMask = createGraphics(w, h);
+    
+    blobMask.background(0);
+    blobMask.fill(255, layerOpacity * 255);
+    blobMask.noStroke();
+    
+    blobMask.beginShape();
+    for (let v of vertices) {
+        blobMask.vertex(v.x, v.y);
+    }
+    blobMask.endShape(CLOSE);
+    
+    return blobMask;
+}
+
+// Combine masks using darkest blend mode (intersection effect)
+function combineMasks(blobMask, textureMask) {
+    let combinedMask = createGraphics(blobMask.width, blobMask.height);
+    
+    // Draw texture mask first
+    combinedMask.image(textureMask, 0, 0);
+    
+    // Apply blob mask using darkest blend mode (intersection)
+    combinedMask.blendMode(DARKEST);
+    combinedMask.image(blobMask, 0, 0);
+    combinedMask.blendMode(BLEND); // Reset blend mode
+    
+    return combinedMask;
+}
 
 // Color picker functions
 function openColorPicker(colorIndex) {
@@ -192,7 +258,7 @@ function createWatercolorBrush() {
     }
 }
 
-// Draw watercolor layer
+// Draw watercolor layer with optional texture masking
 function drawWatercolorLayer(brush) {
     try {
         if (!brush) return;
@@ -206,16 +272,41 @@ function drawWatercolorLayer(brush) {
         // Apply minor additional deformation
         layerPolygon = deformPolygon(layerPolygon, 2, params.deformStrength * 0.5);
         
-        // Set color with low opacity
-        fill(brush.r, brush.g, brush.b, params.opacity);
-        noStroke();
-        
-        // Draw the shape
-        beginShape();
-        for (let v of layerPolygon) {
-            vertex(v.x, v.y);
+        if (params.textureMasking) {
+            // Create texture-masked layer using graphics buffers
+            let layerGraphics = createGraphics(width, height);
+            
+            // Fill with the brush color
+            layerGraphics.background(brush.r, brush.g, brush.b, params.opacity);
+            
+            // Create texture mask
+            let textureMask = createTextureMask(width, height, params.textureDensity, params.textureIntensity);
+            
+            // Create blob mask  
+            let blobMask = createBlobMask(width, height, layerPolygon, 1.0);
+            
+            // Combine masks using darkest blend mode
+            let combinedMask = combineMasks(blobMask, textureMask);
+            
+            // Apply the combined mask to the colored layer
+            layerGraphics.mask(combinedMask);
+            
+            // Draw the masked layer onto the main canvas using multiply blend
+            blendMode(MULTIPLY);
+            image(layerGraphics, 0, 0);
+            blendMode(BLEND); // Reset blend mode
+            
+        } else {
+            // Traditional rendering without texture masking
+            fill(brush.r, brush.g, brush.b, params.opacity);
+            noStroke();
+            
+            beginShape();
+            for (let v of layerPolygon) {
+                vertex(v.x, v.y);
+            }
+            endShape(CLOSE);
         }
-        endShape(CLOSE);
         
     } catch (error) {
         console.error("Error drawing layer:", error);
@@ -248,6 +339,7 @@ function generateWaterscape() {
         }
         
         // Draw layers
+        console.log(`🎨 Drawing ${params.layersPerBrush} layers per brush with texture masking: ${params.textureMasking}`);
         for (let layer = 0; layer < params.layersPerBrush; layer++) {
             for (let brush of brushes) {
                 drawWatercolorLayer(brush);
@@ -332,6 +424,19 @@ function updateColorPalette() {
     });
 }
 
+function updateTextureControls() {
+    const textureControls = document.querySelectorAll('.texture-control');
+    const isEnabled = params.textureMasking;
+    
+    textureControls.forEach(control => {
+        control.style.opacity = isEnabled ? '1' : '0.5';
+        const slider = control.querySelector('input[type="range"]');
+        if (slider) {
+            slider.disabled = !isEnabled;
+        }
+    });
+}
+
 function setupControls() {
     console.log("🎛️ Setting up controls...");
     
@@ -351,18 +456,26 @@ function setupControls() {
         const valueDisplay = document.getElementById(param + 'Value');
         
         if (control && valueDisplay) {
-            control.addEventListener('input', (e) => {
-                params[param] = param === 'deformStrength' ? 
-                    parseFloat(e.target.value) : 
-                    parseInt(e.target.value);
-                
-                valueDisplay.textContent = 
-                    param === 'deformStrength' ? 
-                    params[param].toFixed(1) : 
-                    params[param];
-                
-                generateNew();
-            });
+            if (control.type === 'checkbox') {
+                control.addEventListener('change', (e) => {
+                    params[param] = e.target.checked;
+                    valueDisplay.textContent = params[param] ? 'On' : 'Off';
+                    updateTextureControls();
+                    generateNew();
+                });
+            } else {
+                control.addEventListener('input', (e) => {
+                    if (param === 'deformStrength' || param === 'textureIntensity') {
+                        params[param] = parseFloat(e.target.value);
+                        valueDisplay.textContent = params[param].toFixed(1);
+                    } else {
+                        params[param] = parseInt(e.target.value);
+                        valueDisplay.textContent = params[param];
+                    }
+                    
+                    generateNew();
+                });
+            }
         }
     });
 
@@ -391,6 +504,9 @@ function setupControls() {
             closeColorPicker();
         }
     });
+
+    // Initialize texture controls state
+    updateTextureControls();
 }
 
 function setup() {
@@ -439,4 +555,4 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
     return false;
 };
 
-console.log("✅ Waterscape Studio loaded successfully");
+console.log("✅ Waterscape Studio v2.1 loaded successfully");
