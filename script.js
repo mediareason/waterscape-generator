@@ -46,60 +46,6 @@ function gaussianRandom(mean = 0, stdev = 1) {
     return z * stdev + mean;
 }
 
-// Create texture mask graphics buffer
-function createTextureMask(w, h, circleCount, intensity) {
-    let textureMask = createGraphics(w, h);
-    
-    // Start with black background (fully transparent mask)
-    textureMask.background(0);
-    textureMask.noStroke();
-    
-    // Add random circles with varying opacity to create texture
-    for (let i = 0; i < circleCount; i++) {
-        let x = random(w);
-        let y = random(h);
-        let radius = abs(gaussianRandom(w * 0.015, w * 0.01));
-        let opacity = random(intensity * 255);
-        
-        textureMask.fill(255, opacity);
-        textureMask.circle(x, y, radius);
-    }
-    
-    return textureMask;
-}
-
-// Create blob shape mask from polygon
-function createBlobMask(w, h, vertices, layerOpacity) {
-    let blobMask = createGraphics(w, h);
-    
-    blobMask.background(0);
-    blobMask.fill(255, layerOpacity * 255);
-    blobMask.noStroke();
-    
-    blobMask.beginShape();
-    for (let v of vertices) {
-        blobMask.vertex(v.x, v.y);
-    }
-    blobMask.endShape(CLOSE);
-    
-    return blobMask;
-}
-
-// Combine masks using darkest blend mode (intersection effect)
-function combineMasks(blobMask, textureMask) {
-    let combinedMask = createGraphics(blobMask.width, blobMask.height);
-    
-    // Draw texture mask first
-    combinedMask.image(textureMask, 0, 0);
-    
-    // Apply blob mask using darkest blend mode (intersection)
-    combinedMask.blendMode(DARKEST);
-    combinedMask.image(blobMask, 0, 0);
-    combinedMask.blendMode(BLEND); // Reset blend mode
-    
-    return combinedMask;
-}
-
 // Color picker functions
 function openColorPicker(colorIndex) {
     editingColorIndex = colorIndex;
@@ -258,7 +204,7 @@ function createWatercolorBrush() {
     }
 }
 
-// Draw watercolor layer with optional texture masking
+// Draw watercolor layer with working texture masking
 function drawWatercolorLayer(brush) {
     try {
         if (!brush) return;
@@ -276,29 +222,39 @@ function drawWatercolorLayer(brush) {
             // Create colored layer graphics buffer
             let layerGraphics = createGraphics(width, height);
             
-            // Fill the entire layer with solid color
+            // Draw the blob shape in solid color
             layerGraphics.fill(brush.r, brush.g, brush.b);
             layerGraphics.noStroke();
-            
-            // Draw the blob shape
             layerGraphics.beginShape();
             for (let v of layerPolygon) {
                 layerGraphics.vertex(v.x, v.y);
             }
             layerGraphics.endShape(CLOSE);
             
-            // Create texture mask
-            let textureMask = createTextureMask(width, height, params.textureDensity, params.textureIntensity);
+            // Apply texture directly to the layer using blend mode
+            layerGraphics.blendMode(MULTIPLY);
+            layerGraphics.noStroke();
             
-            // Apply texture mask to the colored layer
-            layerGraphics.mask(textureMask);
+            // Add texture circles for variation
+            for (let i = 0; i < params.textureDensity / 20; i++) { // Reduced density for performance
+                let tx = random(width);
+                let ty = random(height);
+                let radius = abs(gaussianRandom(width * 0.015, width * 0.01));
+                let opacity = random(params.textureIntensity * 255);
+                
+                layerGraphics.fill(255, opacity);
+                layerGraphics.circle(tx, ty, radius);
+            }
             
-            // Draw the masked layer onto the main canvas with low opacity
+            // Reset blend mode
+            layerGraphics.blendMode(BLEND);
+            
+            // Draw the textured layer onto the main canvas with low opacity
             tint(255, params.opacity);
             blendMode(MULTIPLY);
             image(layerGraphics, 0, 0);
-            blendMode(BLEND); // Reset blend mode
-            noTint(); // Reset tint
+            blendMode(BLEND);
+            noTint();
             
         } else {
             // Traditional rendering without texture masking
