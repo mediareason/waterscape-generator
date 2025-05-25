@@ -49,25 +49,50 @@ function gaussianRandom(mean = 0, stdev = 1) {
     return z * stdev + mean;
 }
 
-// Create texture mask for watercolor absorption effect
-function createTextureMask(w, h, intensity) {
-    let mask = createGraphics(w, h);
-    mask.background(0);
-    mask.noStroke();
+// ALTERNATIVE TEXTURE APPROACH: Direct shape modification instead of masking
+function applyTextureToShape(vertices, intensity, density) {
+    if (!params.textureMasking) return vertices;
     
-    let circleCount = Math.floor(params.textureDensity / 8);
-    
-    for (let i = 0; i < circleCount; i++) {
-        let x = random(w);
-        let y = random(h);
-        let radius = abs(gaussianRandom(w * 0.02, w * 0.015));
-        let opacity = random(intensity * 200, intensity * 255);
+    try {
+        let texturedVertices = [];
         
-        mask.fill(255, opacity);
-        mask.circle(x, y, radius);
+        // Apply texture by modifying vertices and adding texture points
+        for (let i = 0; i < vertices.length; i++) {
+            let current = vertices[i];
+            let next = vertices[(i + 1) % vertices.length];
+            
+            texturedVertices.push(current);
+            
+            // Add texture variations along edges
+            let numTexturePoints = int(random(1, density / 200)); // Reduced density
+            for (let t = 1; t < numTexturePoints; t++) {
+                let progress = t / numTexturePoints;
+                let edgeX = lerp(current.x, next.x, progress);
+                let edgeY = lerp(current.y, next.y, progress);
+                
+                // Add perpendicular texture displacement
+                let edgeAngle = atan2(next.y - current.y, next.x - current.x);
+                let perpAngle = edgeAngle + PI/2;
+                let displacement = (random() - 0.5) * intensity * 20;
+                
+                // Random chance to create texture "holes" by pushing inward
+                if (random() < intensity * 0.3) {
+                    displacement *= -1; // Inward displacement
+                }
+                
+                texturedVertices.push({
+                    x: edgeX + cos(perpAngle) * displacement,
+                    y: edgeY + sin(perpAngle) * displacement
+                });
+            }
+        }
+        
+        return texturedVertices;
+        
+    } catch (error) {
+        console.error("Texture application error:", error);
+        return vertices; // Return original if texture fails
     }
-    
-    return mask;
 }
 
 // SIMPLIFIED: More reliable splotchy shape generation
@@ -77,7 +102,7 @@ function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
         
         if (params.randomWalkMode) {
             // Random Walk Mode - simplified for reliability
-            let numPoints = 20;
+            let numPoints = 30;
             let currentX = centerX;
             let currentY = centerY;
             let angle = 0;
@@ -152,6 +177,9 @@ function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
                 vertices.push({x: dripX, y: dripY});
             }
         }
+        
+        // Step 4: Apply texture modification directly to shape
+        vertices = applyTextureToShape(vertices, params.textureIntensity, params.textureDensity);
         
         return vertices.length > 2 ? vertices : createFallbackShape(centerX, centerY, baseRadius);
         
@@ -289,7 +317,7 @@ function createWatercolorBrush() {
     }
 }
 
-// Draw watercolor layer with improved reliability
+// Draw watercolor layer with WORKING texture alternative
 function drawWatercolorLayer(brush) {
     try {
         if (!brush || !brush.basePolygon || brush.basePolygon.length < 3) {
@@ -297,7 +325,7 @@ function drawWatercolorLayer(brush) {
             return;
         }
         
-        // Create layer variation
+        // Create layer variation with texture built-in
         let layerVertices = createSplotchyShape(
             brush.x + random(-10, 10),
             brush.y + random(-10, 10),
@@ -310,39 +338,28 @@ function drawWatercolorLayer(brush) {
             layerVertices = createFallbackShape(brush.x, brush.y, brush.size);
         }
         
-        if (params.textureMasking) {
-            // Create the colored shape layer
-            let shapeLayer = createGraphics(width, height);
-            shapeLayer.fill(brush.r, brush.g, brush.b);
-            shapeLayer.noStroke();
-            
-            shapeLayer.beginShape();
-            for (let v of layerVertices) {
-                shapeLayer.vertex(v.x, v.y);
+        // SIMPLIFIED: Direct drawing without problematic mask() function
+        fill(brush.r, brush.g, brush.b, params.opacity);
+        noStroke();
+        
+        beginShape();
+        for (let v of layerVertices) {
+            vertex(v.x, v.y);
+        }
+        endShape(CLOSE);
+        
+        // Additional texture effect: Add some small transparent circles for paper texture
+        if (params.textureMasking && random() < 0.3) {
+            let numDots = int(random(3, 8));
+            for (let i = 0; i < numDots; i++) {
+                let dotX = brush.x + random(-brush.size, brush.size);
+                let dotY = brush.y + random(-brush.size, brush.size);
+                let dotSize = random(2, 6);
+                let dotOpacity = random(params.opacity * 0.5, params.opacity * 1.5);
+                
+                fill(brush.r, brush.g, brush.b, dotOpacity);
+                circle(dotX, dotY, dotSize);
             }
-            shapeLayer.endShape(CLOSE);
-            
-            // Create texture mask for absorption effect
-            let textureMask = createTextureMask(width, height, params.textureIntensity);
-            
-            // Apply mask for watercolor absorption
-            shapeLayer.mask(textureMask);
-            
-            // Draw with proper watercolor opacity
-            tint(255, params.opacity * 0.7);
-            image(shapeLayer, 0, 0);
-            noTint();
-            
-        } else {
-            // Traditional rendering
-            fill(brush.r, brush.g, brush.b, params.opacity);
-            noStroke();
-            
-            beginShape();
-            for (let v of layerVertices) {
-                vertex(v.x, v.y);
-            }
-            endShape(CLOSE);
         }
         
     } catch (error) {
@@ -355,7 +372,7 @@ function drawWatercolorLayer(brush) {
     }
 }
 
-// Simplified async generation
+// Simplified async generation - NO PROBLEMATIC MASKING
 async function generateWaterscape() {
     if (isGenerating) return;
     isGenerating = true;
@@ -363,7 +380,7 @@ async function generateWaterscape() {
     let startTime = performance.now();
     
     try {
-        console.log("🎨 Generating reliable splotchy waterscape...", params);
+        console.log("🎨 Generating waterscape WITHOUT mask() function...", params);
         
         randomSeed(params.randomSeed);
         
@@ -380,13 +397,13 @@ async function generateWaterscape() {
             }
         }
         
-        console.log(`✨ Created ${brushes.length} reliable splotchy brushes (Random Walk: ${params.randomWalkMode})`);
+        console.log(`✨ Created ${brushes.length} reliable brushes (Random Walk: ${params.randomWalkMode})`);
         
         if (brushes.length === 0) {
             throw new Error("No valid brushes created");
         }
         
-        // Draw layers
+        // Draw layers with alternative texture method
         console.log(`🎨 Drawing ${params.layersPerBrush} layers per brush`);
         
         for (let layer = 0; layer < params.layersPerBrush; layer++) {
@@ -404,7 +421,7 @@ async function generateWaterscape() {
         updateMetadata();
         
         let endTime = performance.now();
-        console.log(`🎨 Reliable splotchy generation complete in ${(endTime - startTime).toFixed(1)}ms!`);
+        console.log(`🎨 Alternative texture generation complete in ${(endTime - startTime).toFixed(1)}ms!`);
         
     } catch (error) {
         console.error('❌ Generation error:', error);
