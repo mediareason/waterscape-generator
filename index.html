@@ -60,6 +60,58 @@
         </div>
 
         <div class="control-section">
+            <div class="section-header">🌊 Advanced Water Effects</div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>💧 Color Bleeding</span>
+                    <span class="control-value" id="colorBleedingValue">On</span>
+                </div>
+                <input type="checkbox" class="checkbox" id="colorBleeding" checked>
+            </div>
+
+            <div class="control-item bleeding-control">
+                <div class="control-label">
+                    <span>Bleeding Intensity</span>
+                    <span class="control-value" id="bleedingIntensityValue">0.6</span>
+                </div>
+                <input type="range" class="slider" id="bleedingIntensity" min="0.2" max="1.0" step="0.1" value="0.6">
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">
+                    <span>🎨 Wet-on-Wet</span>
+                    <span class="control-value" id="wetOnWetValue">On</span>
+                </div>
+                <input type="checkbox" class="checkbox" id="wetOnWet" checked>
+            </div>
+
+            <div class="control-item wet-control">
+                <div class="control-label">
+                    <span>Wet Blend Radius</span>
+                    <span class="control-value" id="wetBlendRadiusValue">40</span>
+                </div>
+                <input type="range" class="slider" id="wetBlendRadius" min="20" max="80" value="40">
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">
+                    <span>🏔️ Depth Effect</span>
+                    <span class="control-value" id="depthEffectValue">On</span>
+                </div>
+                <input type="checkbox" class="checkbox" id="depthEffect" checked>
+            </div>
+
+            <div class="control-item depth-control">
+                <div class="control-label">
+                    <span>Depth Layers</span>
+                    <span class="control-value" id="depthLayersValue">3</span>
+                </div>
+                <input type="range" class="slider" id="depthLayers" min="1" max="5" value="3">
+            </div>
+        </div>
+
+        <div class="control-section">
             <div class="section-header">Watercolor FX</div>
             
             <div class="control-item">
@@ -139,7 +191,7 @@
             <button class="btn btn-secondary" onclick="savePNG()">Export PNG</button>
         </div>
 
-        <div class="version-info">v2.1 • Tyler Hobbs Algorithm + Texture Masking</div>
+        <div class="version-info">v2.2 • Advanced Water Effects: Color Bleeding + Wet-on-Wet + Depth</div>
     </div>
 
     <div class="canvas-container">
@@ -174,5 +226,6 @@
     </div>
 
     <script src="script.js"></script>
+    <script src="script-part3.js"></script>
 </body>
 </html>
