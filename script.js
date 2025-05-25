@@ -30,16 +30,15 @@ let params = {
     opacity: 8,
     randomSeed: 42,
     backgroundType: 'white',
-    // New texture masking parameters
+    // Enhanced texture masking parameters
     textureMasking: true,
     textureIntensity: 0.7,
-    textureDensity: 800
+    textureDensity: 800,
+    // NEW: Hybrid splotchiness options
+    randomWalkMode: false
 };
 
 let canvas;
-
-// Performance optimizations
-let backgroundBuffer = null;
 let isGenerating = false;
 
 // Gaussian random number generator for natural variation
@@ -50,21 +49,19 @@ function gaussianRandom(mean = 0, stdev = 1) {
     return z * stdev + mean;
 }
 
-// OPTIMIZED: Create texture mask with fewer but larger circles for performance
+// Create texture mask for watercolor absorption effect
 function createTextureMask(w, h, intensity) {
     let mask = createGraphics(w, h);
-    mask.background(0); // Black = transparent areas
+    mask.background(0);
     mask.noStroke();
     
-    // Reduced circle count but increased impact for performance
-    let circleCount = Math.floor(params.textureDensity / 8); // Significantly reduced
+    let circleCount = Math.floor(params.textureDensity / 8);
     
     for (let i = 0; i < circleCount; i++) {
         let x = random(w);
         let y = random(h);
-        // Larger, more varied circles for better splotchy effect
-        let radius = abs(gaussianRandom(w * 0.02, w * 0.015)); // Increased size
-        let opacity = random(intensity * 200, intensity * 255); // Higher opacity range
+        let radius = abs(gaussianRandom(w * 0.02, w * 0.015));
+        let opacity = random(intensity * 200, intensity * 255);
         
         mask.fill(255, opacity);
         mask.circle(x, y, radius);
@@ -73,68 +70,166 @@ function createTextureMask(w, h, intensity) {
     return mask;
 }
 
-// ENHANCED: Much more aggressive deformation for splotchy watercolor bleeding
-function createSplotchyPolygon(centerX, centerY, baseRadius, complexity = 6) {
+// HYBRID METHOD: Combine Tyler Hobbs + Drip Simulation + Blob Subdivision
+function createHybridSplotchyShape(centerX, centerY, baseRadius, params) {
     let vertices = [];
-    let variance = [];
     
-    // Start with more irregular base shape
-    let sides = int(random(5, 8));
+    if (params.randomWalkMode) {
+        // Random Walk Mode - Organic spreading paint effect
+        return createRandomWalkShape(centerX, centerY, baseRadius, params);
+    }
+    
+    // STEP 1: Start with Tyler Hobbs base polygon with variation
+    let sides = int(random(5, 9));
     for (let i = 0; i < sides; i++) {
-        let angle = (TWO_PI / sides) * i + random(-0.3, 0.3); // Add angle variation
-        let radiusVar = baseRadius * random(0.4, 1.2); // Much more radius variation
+        let angle = (TWO_PI / sides) * i + random(-0.4, 0.4); // More angle variation
+        let radiusVar = baseRadius * random(0.3, 1.3); // Dramatic radius variation
         
         let x = centerX + cos(angle) * radiusVar;
         let y = centerY + sin(angle) * radiusVar;
-        
         vertices.push({x: x, y: y});
-        variance.push(random(0.5, 2.0)); // Higher variance range
     }
     
-    // Apply multiple rounds of aggressive deformation
-    for (let round = 0; round < complexity; round++) {
+    // STEP 2: Apply Tyler Hobbs deformation with enhanced chaos
+    for (let round = 0; round < params.edgeComplexity; round++) {
         let newVertices = [];
-        let newVariance = [];
         
         for (let i = 0; i < vertices.length; i++) {
             let current = vertices[i];
             let next = vertices[(i + 1) % vertices.length];
-            let currentVar = variance[i];
             
             newVertices.push(current);
-            newVariance.push(currentVar * 0.85);
             
-            // Create highly deformed midpoints for splotchy effect
+            // Enhanced Tyler Hobbs deformation
             let midX = (current.x + next.x) / 2;
             let midY = (current.y + next.y) / 2;
             
-            // MUCH more aggressive deformation
-            let deformStrength = currentVar * params.deformStrength * 80; // Increased multiplier
+            let deformStrength = params.deformStrength * 100; // Increased
             let deformX = gaussianRandom(0, deformStrength);
             let deformY = gaussianRandom(0, deformStrength);
-            
-            // Add some branching/splitting effects
-            if (random() < 0.3 && round > 1) {
-                // Create "bleed" points that extend outward
-                let bleedDistance = random(10, 30);
-                let bleedAngle = random(TWO_PI);
-                deformX += cos(bleedAngle) * bleedDistance;
-                deformY += sin(bleedAngle) * bleedDistance;
-            }
             
             newVertices.push({
                 x: midX + deformX,
                 y: midY + deformY
             });
-            
-            newVariance.push(currentVar * random(0.7, 1.1));
         }
-        
         vertices = newVertices;
-        variance = newVariance;
     }
     
-    return { vertices: vertices, variance: variance };
+    // STEP 3: Add Blob Subdivision for fractal detail
+    if (random() < 0.7) { // 70% chance for subdivision
+        let subdivisionVertices = [];
+        for (let i = 0; i < vertices.length; i++) {
+            let current = vertices[i];
+            let next = vertices[(i + 1) % vertices.length];
+            
+            subdivisionVertices.push(current);
+            
+            // Add 1-3 subdivision points per edge
+            let subdivisions = int(random(1, 4));
+            for (let s = 1; s < subdivisions; s++) {
+                let t = s / subdivisions;
+                let subX = lerp(current.x, next.x, t);
+                let subY = lerp(current.y, next.y, t);
+                
+                // Perpendicular displacement for organic variation
+                let perpAngle = atan2(next.y - current.y, next.x - current.x) + PI/2;
+                let displacement = (random() - 0.5) * params.deformStrength * 60;
+                
+                subdivisionVertices.push({
+                    x: subX + cos(perpAngle) * displacement,
+                    y: subY + sin(perpAngle) * displacement
+                });
+            }
+        }
+        vertices = subdivisionVertices;
+    }
+    
+    // STEP 4: Add Drip Extensions for bleeding effect
+    if (random() < 0.8) { // 80% chance for drips
+        let numDrips = int(random(2, 6));
+        let dripVertices = [];
+        
+        for (let d = 0; d < numDrips; d++) {
+            let baseIndex = int(random(vertices.length));
+            let baseVertex = vertices[baseIndex];
+            
+            // Create drip extending outward
+            let dripAngle = random(TWO_PI);
+            let dripLength = random(15, 40);
+            
+            // Create tapering drip
+            for (let step = 1; step <= 4; step++) {
+                let progress = step / 4;
+                let currentLength = dripLength * progress;
+                let width = baseRadius * 0.08 * (1 - progress * 0.7); // Tapers
+                
+                let centerX = baseVertex.x + cos(dripAngle) * currentLength;
+                let centerY = baseVertex.y + sin(dripAngle) * currentLength;
+                
+                // Add width with random variation
+                let perpAngle = dripAngle + PI/2;
+                let widthVar = width * random(0.5, 1.5);
+                
+                dripVertices.push({
+                    x: centerX + cos(perpAngle) * widthVar,
+                    y: centerY + sin(perpAngle) * widthVar
+                });
+                dripVertices.push({
+                    x: centerX - cos(perpAngle) * widthVar,
+                    y: centerY - sin(perpAngle) * widthVar
+                });
+            }
+        }
+        
+        // Merge drip vertices with main shape
+        vertices = vertices.concat(dripVertices);
+    }
+    
+    return vertices;
+}
+
+// Random Walk Mode - Alternative organic spreading effect
+function createRandomWalkShape(centerX, centerY, baseRadius, params) {
+    let vertices = [];
+    let walkers = [];
+    
+    // Start multiple walkers from center
+    let numWalkers = int(random(3, 8));
+    for (let i = 0; i < numWalkers; i++) {
+        walkers.push({
+            x: centerX + random(-10, 10),
+            y: centerY + random(-10, 10),
+            angle: random(TWO_PI),
+            energy: random(50, 150)
+        });
+    }
+    
+    // Let walkers spread organically
+    for (let step = 0; step < 100; step++) {
+        for (let walker of walkers) {
+            if (walker.energy <= 0) continue;
+            
+            // Bias toward center with some randomness
+            let toCenter = atan2(centerY - walker.y, centerX - walker.x);
+            let bias = map(dist(walker.x, walker.y, centerX, centerY), 0, baseRadius, 0.3, 0.05);
+            
+            walker.angle += (random() - 0.5) * params.deformStrength * 3;
+            walker.angle = lerp(walker.angle, toCenter + PI, bias); // Move away from center
+            
+            let stepSize = random(2, 8) * (walker.energy / 100);
+            walker.x += cos(walker.angle) * stepSize;
+            walker.y += sin(walker.angle) * stepSize;
+            walker.energy -= 1;
+            
+            // Keep within bounds and add to vertices
+            if (dist(walker.x, walker.y, centerX, centerY) < baseRadius * 1.5) {
+                vertices.push({x: walker.x, y: walker.y});
+            }
+        }
+    }
+    
+    return vertices;
 }
 
 // Color picker functions
@@ -211,14 +306,14 @@ function updateMetadata() {
     document.getElementById('layerCountInfo').textContent = totalLayers;
 }
 
-// Create watercolor brush with enhanced splotchy characteristics
+// Create watercolor brush with hybrid splotchy characteristics
 function createWatercolorBrush() {
     try {
-        let x = random(width * 0.15, width * 0.85);
-        let y = random(height * 0.15, height * 0.85);
-        let size = random(params.brushSize * 0.6, params.brushSize * 1.4); // More size variation
+        let x = random(width * 0.1, width * 0.9);
+        let y = random(height * 0.1, height * 0.9);
+        let size = random(params.brushSize * 0.5, params.brushSize * 1.5);
         
-        // Pick random color
+        // Pick random color with enhanced variation
         let colorIndex = int(random(palettes[currentPalette].length));
         let baseColor = palettes[currentPalette][colorIndex];
         
@@ -227,17 +322,16 @@ function createWatercolorBrush() {
         let g = parseInt(baseColor.slice(3, 5), 16);
         let b = parseInt(baseColor.slice(5, 7), 16);
         
-        // Add more color variation for natural watercolor mixing
-        r = constrain(r + random(-30, 30), 0, 255);
-        g = constrain(g + random(-30, 30), 0, 255);
-        b = constrain(b + random(-30, 30), 0, 255);
+        // Enhanced color variation for natural watercolor mixing
+        r = constrain(r + random(-40, 40), 0, 255);
+        g = constrain(g + random(-40, 40), 0, 255);
+        b = constrain(b + random(-40, 40), 0, 255);
         
-        // Create highly irregular splotchy polygon
-        let splotchy = createSplotchyPolygon(x, y, size, params.edgeComplexity + 2);
+        // Create hybrid splotchy shape
+        let splotchyVertices = createHybridSplotchyShape(x, y, size, params);
         
         return {
-            basePolygon: splotchy.vertices,
-            baseVariance: splotchy.variance,
+            basePolygon: splotchyVertices,
             r: r,
             g: g,
             b: b,
@@ -251,17 +345,17 @@ function createWatercolorBrush() {
     }
 }
 
-// ENHANCED: More dramatic layer variation for watercolor bleeding effect
+// Draw watercolor layer with hybrid splotchiness
 function drawWatercolorLayer(brush) {
     try {
         if (!brush) return;
         
-        // Create MUCH more dramatic layer variation
-        let layerDeformation = createSplotchyPolygon(
-            brush.x + random(-15, 15), // More position variation
-            brush.y + random(-15, 15),
-            brush.size * random(0.7, 1.2), // More size variation
-            3 + int(random(3)) // Variable complexity per layer
+        // Create layer variation using hybrid approach
+        let layerVertices = createHybridSplotchyShape(
+            brush.x + random(-20, 20),
+            brush.y + random(-20, 20),
+            brush.size * random(0.6, 1.3),
+            params
         );
         
         if (params.textureMasking) {
@@ -269,11 +363,14 @@ function drawWatercolorLayer(brush) {
             let shapeLayer = createGraphics(width, height);
             shapeLayer.fill(brush.r, brush.g, brush.b);
             shapeLayer.noStroke();
-            shapeLayer.beginShape();
-            for (let v of layerDeformation.vertices) {
-                shapeLayer.vertex(v.x, v.y);
+            
+            if (layerVertices.length > 2) {
+                shapeLayer.beginShape();
+                for (let v of layerVertices) {
+                    shapeLayer.vertex(v.x, v.y);
+                }
+                shapeLayer.endShape(CLOSE);
             }
-            shapeLayer.endShape(CLOSE);
             
             // Create texture mask for absorption effect
             let textureMask = createTextureMask(width, height, params.textureIntensity);
@@ -282,37 +379,35 @@ function drawWatercolorLayer(brush) {
             shapeLayer.mask(textureMask);
             
             // Draw with proper watercolor opacity
-            tint(255, params.opacity * 0.6); // Slightly higher opacity for visibility
+            tint(255, params.opacity * 0.7);
             image(shapeLayer, 0, 0);
             noTint();
             
         } else {
-            // Traditional rendering with enhanced splotchiness
+            // Traditional rendering with hybrid splotchiness
             fill(brush.r, brush.g, brush.b, params.opacity);
             noStroke();
             
-            beginShape();
-            for (let v of layerDeformation.vertices) {
-                vertex(v.x, v.y);
+            if (layerVertices.length > 2) {
+                beginShape();
+                for (let v of layerVertices) {
+                    vertex(v.x, v.y);
+                }
+                endShape(CLOSE);
             }
-            endShape(CLOSE);
         }
         
     } catch (error) {
         console.error("Error drawing layer:", error);
         
-        // Fallback to simple drawing
+        // Simple fallback
         fill(brush.r, brush.g, brush.b, params.opacity);
         noStroke();
-        beginShape();
-        for (let v of brush.basePolygon) {
-            vertex(v.x, v.y);
-        }
-        endShape(CLOSE);
+        circle(brush.x, brush.y, brush.size);
     }
 }
 
-// OPTIMIZED: Async generation with progress updates
+// Async generation with hybrid splotchiness
 async function generateWaterscape() {
     if (isGenerating) return;
     isGenerating = true;
@@ -320,7 +415,7 @@ async function generateWaterscape() {
     let startTime = performance.now();
     
     try {
-        console.log("🎨 Generating splotchy waterscape...", params);
+        console.log("🎨 Generating hybrid splotchy waterscape...", params);
         
         randomSeed(params.randomSeed);
         
@@ -328,7 +423,7 @@ async function generateWaterscape() {
         background(255);
         drawBackground();
         
-        // Create brushes with enhanced splotchiness
+        // Create brushes with hybrid splotchy characteristics
         let brushes = [];
         for (let i = 0; i < params.brushCount; i++) {
             let brush = createWatercolorBrush();
@@ -337,22 +432,22 @@ async function generateWaterscape() {
             }
         }
         
-        console.log(`✨ Created ${brushes.length} highly irregular brushes`);
+        console.log(`✨ Created ${brushes.length} hybrid splotchy brushes (Random Walk: ${params.randomWalkMode})`);
         
         if (brushes.length === 0) {
             throw new Error("No brushes created");
         }
         
-        // Draw layers with enhanced splotchy variation
-        console.log(`🎨 Drawing ${params.layersPerBrush} splotchy layers per brush`);
+        // Draw layers with hybrid splotchy variation
+        console.log(`🎨 Drawing ${params.layersPerBrush} hybrid layers per brush`);
         
         for (let layer = 0; layer < params.layersPerBrush; layer++) {
             for (let brush of brushes) {
                 drawWatercolorLayer(brush);
             }
             
-            // Yield control occasionally for better UI responsiveness
-            if (layer % 5 === 0) {
+            // Yield control for UI responsiveness
+            if (layer % 3 === 0) {
                 await new Promise(resolve => setTimeout(resolve, 1));
             }
         }
@@ -361,12 +456,12 @@ async function generateWaterscape() {
         updateMetadata();
         
         let endTime = performance.now();
-        console.log(`🎨 Splotchy generation complete in ${(endTime - startTime).toFixed(1)}ms!`);
+        console.log(`🎨 Hybrid splotchy generation complete in ${(endTime - startTime).toFixed(1)}ms!`);
         
     } catch (error) {
         console.error('❌ Generation error:', error);
         
-        // Simple fallback
+        // Fallback with simple shapes
         background(255);
         for (let i = 0; i < 5; i++) {
             let colorIndex = int(random(palettes[currentPalette].length));
@@ -377,20 +472,7 @@ async function generateWaterscape() {
             
             fill(r, g, b, 30);
             noStroke();
-            
-            // Even fallback shapes are more splotchy
-            let vertices = createSplotchyPolygon(
-                random(width * 0.2, width * 0.8),
-                random(height * 0.2, height * 0.8),
-                random(50, 100),
-                3
-            ).vertices;
-            
-            beginShape();
-            for (let v of vertices) {
-                vertex(v.x, v.y);
-            }
-            endShape(CLOSE);
+            circle(random(width), random(height), random(50, 100));
         }
         
         updateMetadata();
