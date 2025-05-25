@@ -292,48 +292,24 @@
             position: relative;
         }
 
-        .canvas-info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(8px);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 11px;
+        .canvas-metadata {
+            text-align: center;
+            margin-top: 16px;
+            color: #52525b;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.4;
+        }
+
+        .canvas-metadata .primary-info {
+            color: #71717a;
             font-weight: 500;
-            color: #a1a1aa;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 4px;
         }
 
-        .status-indicator {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(8px);
-            padding: 6px 10px;
-            border-radius: 6px;
+        .canvas-metadata .secondary-info {
+            color: #3f3f46;
             font-size: 11px;
-            font-weight: 500;
-            color: #22c55e;
-            border: 1px solid rgba(34, 197, 94, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            background: #22c55e;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
         }
 
         .version-info {
@@ -483,12 +459,11 @@
     </div>
 
     <div class="canvas-container">
-        <div class="canvas-wrapper" id="canvasWrapper">
-            <div class="canvas-info">800 × 600px</div>
-            <div class="status-indicator">
-                <div class="status-dot"></div>
-                Live
-            </div>
+        <div class="canvas-wrapper" id="canvasWrapper"></div>
+        
+        <div class="canvas-metadata">
+            <div class="primary-info" id="canvasInfo">800 × 600px</div>
+            <div class="secondary-info" id="generationInfo">Generated with <span id="currentPaletteInfo">vibrant</span> palette • <span id="layerCountInfo">300</span> total layers</div>
         </div>
     </div>
 
@@ -519,6 +494,13 @@
         };
 
         let canvas;
+
+        // Update metadata display
+        function updateMetadata() {
+            const totalLayers = params.brushCount * params.layersPerBrush;
+            document.getElementById('currentPaletteInfo').textContent = currentPalette;
+            document.getElementById('layerCountInfo').textContent = totalLayers;
+        }
 
         // Simple but effective deformation function
         function deformPolygon(vertices, complexity, strength) {
@@ -666,6 +648,9 @@
                     }
                 }
                 
+                // Update metadata
+                updateMetadata();
+                
                 console.log("🎨 Generation complete!");
                 
             } catch (error) {
@@ -691,6 +676,8 @@
                     
                     circle(x, y, size);
                 }
+                
+                updateMetadata();
             }
         }
 
