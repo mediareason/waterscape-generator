@@ -39,8 +39,8 @@ let params = {
 let canvas;
 
 // Performance optimizations
-let textureCache = new Map();
-let reusableGraphics = null;
+let backgroundBuffer = null;
+let isGenerating = false;
 
 // Gaussian random number generator for natural variation
 function gaussianRandom(mean = 0, stdev = 1) {
@@ -50,24 +50,91 @@ function gaussianRandom(mean = 0, stdev = 1) {
     return z * stdev + mean;
 }
 
-// Create texture mask using Tyler Hobbs approach - random circles for opacity variation
-function createTextureMask(w, h, circleCount, intensity) {
+// OPTIMIZED: Create texture mask with fewer but larger circles for performance
+function createTextureMask(w, h, intensity) {
     let mask = createGraphics(w, h);
     mask.background(0); // Black = transparent areas
     mask.noStroke();
     
-    // Add random circles - white areas will be visible
+    // Reduced circle count but increased impact for performance
+    let circleCount = Math.floor(params.textureDensity / 8); // Significantly reduced
+    
     for (let i = 0; i < circleCount; i++) {
         let x = random(w);
         let y = random(h);
-        let radius = abs(gaussianRandom(w * 0.01, w * 0.005));
-        let opacity = random(intensity * 255);
+        // Larger, more varied circles for better splotchy effect
+        let radius = abs(gaussianRandom(w * 0.02, w * 0.015)); // Increased size
+        let opacity = random(intensity * 200, intensity * 255); // Higher opacity range
         
         mask.fill(255, opacity);
         mask.circle(x, y, radius);
     }
     
     return mask;
+}
+
+// ENHANCED: Much more aggressive deformation for splotchy watercolor bleeding
+function createSplotchyPolygon(centerX, centerY, baseRadius, complexity = 6) {
+    let vertices = [];
+    let variance = [];
+    
+    // Start with more irregular base shape
+    let sides = int(random(5, 8));
+    for (let i = 0; i < sides; i++) {
+        let angle = (TWO_PI / sides) * i + random(-0.3, 0.3); // Add angle variation
+        let radiusVar = baseRadius * random(0.4, 1.2); // Much more radius variation
+        
+        let x = centerX + cos(angle) * radiusVar;
+        let y = centerY + sin(angle) * radiusVar;
+        
+        vertices.push({x: x, y: y});
+        variance.push(random(0.5, 2.0)); // Higher variance range
+    }
+    
+    // Apply multiple rounds of aggressive deformation
+    for (let round = 0; round < complexity; round++) {
+        let newVertices = [];
+        let newVariance = [];
+        
+        for (let i = 0; i < vertices.length; i++) {
+            let current = vertices[i];
+            let next = vertices[(i + 1) % vertices.length];
+            let currentVar = variance[i];
+            
+            newVertices.push(current);
+            newVariance.push(currentVar * 0.85);
+            
+            // Create highly deformed midpoints for splotchy effect
+            let midX = (current.x + next.x) / 2;
+            let midY = (current.y + next.y) / 2;
+            
+            // MUCH more aggressive deformation
+            let deformStrength = currentVar * params.deformStrength * 80; // Increased multiplier
+            let deformX = gaussianRandom(0, deformStrength);
+            let deformY = gaussianRandom(0, deformStrength);
+            
+            // Add some branching/splitting effects
+            if (random() < 0.3 && round > 1) {
+                // Create "bleed" points that extend outward
+                let bleedDistance = random(10, 30);
+                let bleedAngle = random(TWO_PI);
+                deformX += cos(bleedAngle) * bleedDistance;
+                deformY += sin(bleedAngle) * bleedDistance;
+            }
+            
+            newVertices.push({
+                x: midX + deformX,
+                y: midY + deformY
+            });
+            
+            newVariance.push(currentVar * random(0.7, 1.1));
+        }
+        
+        vertices = newVertices;
+        variance = newVariance;
+    }
+    
+    return { vertices: vertices, variance: variance };
 }
 
 // Color picker functions
@@ -144,68 +211,12 @@ function updateMetadata() {
     document.getElementById('layerCountInfo').textContent = totalLayers;
 }
 
-// Enhanced deformation function with variance support (Tyler Hobbs approach)
-function deformPolygonWithVariance(vertices, complexity, strength, varianceMap = null) {
-    let result = JSON.parse(JSON.stringify(vertices)); // Deep copy
-    
-    // If no variance map provided, create uniform variance
-    if (!varianceMap) {
-        varianceMap = new Array(vertices.length).fill(1.0);
-    }
-    
-    // Apply multiple rounds of edge subdivision and deformation
-    for (let round = 0; round < complexity; round++) {
-        let newVertices = [];
-        let newVarianceMap = [];
-        let currentStrength = strength * (1 / (round + 1)); // Reduce strength each round
-        
-        for (let i = 0; i < result.length; i++) {
-            let current = result[i];
-            let next = result[(i + 1) % result.length];
-            let currentVariance = varianceMap[i] || 1.0;
-            
-            newVertices.push(current);
-            newVarianceMap.push(currentVariance * 0.8); // Reduce variance for existing points
-            
-            // Create midpoint with random deformation based on variance
-            let midX = (current.x + next.x) / 2;
-            let midY = (current.y + next.y) / 2;
-            
-            // Apply variance to deformation strength
-            let varianceStrength = currentVariance * currentStrength;
-            let deformX = (Math.random() - 0.5) * varianceStrength * 40;
-            let deformY = (Math.random() - 0.5) * varianceStrength * 40;
-            
-            newVertices.push({
-                x: midX + deformX,
-                y: midY + deformY
-            });
-            
-            // Child variance inherits from parent with some randomization
-            let childVariance = currentVariance * (0.7 + Math.random() * 0.3);
-            newVarianceMap.push(childVariance);
-        }
-        
-        result = newVertices;
-        varianceMap = newVarianceMap;
-    }
-    
-    return { vertices: result, variance: varianceMap };
-}
-
-// Simple but effective deformation function (backward compatibility)
-function deformPolygon(vertices, complexity, strength) {
-    let result = deformPolygonWithVariance(vertices, complexity, strength);
-    return result.vertices;
-}
-
-// Create watercolor brush with variance information
+// Create watercolor brush with enhanced splotchy characteristics
 function createWatercolorBrush() {
     try {
-        let x = random(width * 0.2, width * 0.8);
-        let y = random(height * 0.2, height * 0.8);
-        let size = random(params.brushSize * 0.7, params.brushSize * 1.3);
-        let sides = int(random(6, 10));
+        let x = random(width * 0.15, width * 0.85);
+        let y = random(height * 0.15, height * 0.85);
+        let size = random(params.brushSize * 0.6, params.brushSize * 1.4); // More size variation
         
         // Pick random color
         let colorIndex = int(random(palettes[currentPalette].length));
@@ -216,30 +227,17 @@ function createWatercolorBrush() {
         let g = parseInt(baseColor.slice(3, 5), 16);
         let b = parseInt(baseColor.slice(5, 7), 16);
         
-        // Add variation
-        r = constrain(r + random(-20, 20), 0, 255);
-        g = constrain(g + random(-20, 20), 0, 255);
-        b = constrain(b + random(-20, 20), 0, 255);
+        // Add more color variation for natural watercolor mixing
+        r = constrain(r + random(-30, 30), 0, 255);
+        g = constrain(g + random(-30, 30), 0, 255);
+        b = constrain(b + random(-30, 30), 0, 255);
         
-        // Create base polygon
-        let basePolygon = [];
-        let baseVariance = [];
-        for (let i = 0; i < sides; i++) {
-            let angle = (TWO_PI / sides) * i;
-            let vx = x + cos(angle) * size;
-            let vy = y + sin(angle) * size;
-            basePolygon.push({x: vx, y: vy});
-            
-            // Assign random variance to each edge (some sharp, some soft)
-            baseVariance.push(random(0.3, 1.5));
-        }
-        
-        // Apply initial deformation with variance
-        let deformed = deformPolygonWithVariance(basePolygon, params.edgeComplexity, params.deformStrength, baseVariance);
+        // Create highly irregular splotchy polygon
+        let splotchy = createSplotchyPolygon(x, y, size, params.edgeComplexity + 2);
         
         return {
-            basePolygon: deformed.vertices,
-            baseVariance: deformed.variance,
+            basePolygon: splotchy.vertices,
+            baseVariance: splotchy.variance,
             r: r,
             g: g,
             b: b,
@@ -253,23 +251,21 @@ function createWatercolorBrush() {
     }
 }
 
-// Tyler Hobbs approach: Draw watercolor layer with proper texture masking
+// ENHANCED: More dramatic layer variation for watercolor bleeding effect
 function drawWatercolorLayer(brush) {
     try {
         if (!brush) return;
         
-        // Create layer variation by deforming the base polygon more (Tyler Hobbs step 1)
-        let layerDeformation = deformPolygonWithVariance(
-            brush.basePolygon, 
-            4, // 4-5 additional deformation rounds
-            params.deformStrength * 0.8, 
-            brush.baseVariance
+        // Create MUCH more dramatic layer variation
+        let layerDeformation = createSplotchyPolygon(
+            brush.x + random(-15, 15), // More position variation
+            brush.y + random(-15, 15),
+            brush.size * random(0.7, 1.2), // More size variation
+            3 + int(random(3)) // Variable complexity per layer
         );
         
         if (params.textureMasking) {
-            // Tyler Hobbs approach: Create texture-masked layer
-            
-            // Step 1: Create the colored shape layer
+            // Create the colored shape layer
             let shapeLayer = createGraphics(width, height);
             shapeLayer.fill(brush.r, brush.g, brush.b);
             shapeLayer.noStroke();
@@ -279,24 +275,19 @@ function drawWatercolorLayer(brush) {
             }
             shapeLayer.endShape(CLOSE);
             
-            // Step 2: Create unique texture mask for this layer
-            let textureMask = createTextureMask(
-                width, 
-                height, 
-                params.textureDensity / 4, // Reduced for performance
-                params.textureIntensity
-            );
+            // Create texture mask for absorption effect
+            let textureMask = createTextureMask(width, height, params.textureIntensity);
             
-            // Step 3: Apply mask to shape (this creates the absorption effect)
+            // Apply mask for watercolor absorption
             shapeLayer.mask(textureMask);
             
-            // Step 4: Draw masked layer with low opacity (Tyler Hobbs: ~4%)
-            tint(255, params.opacity * 0.5); // Reduced opacity for proper buildup
+            // Draw with proper watercolor opacity
+            tint(255, params.opacity * 0.6); // Slightly higher opacity for visibility
             image(shapeLayer, 0, 0);
             noTint();
             
         } else {
-            // Traditional rendering without texture masking
+            // Traditional rendering with enhanced splotchiness
             fill(brush.r, brush.g, brush.b, params.opacity);
             noStroke();
             
@@ -310,7 +301,7 @@ function drawWatercolorLayer(brush) {
     } catch (error) {
         console.error("Error drawing layer:", error);
         
-        // Fallback to simple drawing if masking fails
+        // Fallback to simple drawing
         fill(brush.r, brush.g, brush.b, params.opacity);
         noStroke();
         beginShape();
@@ -321,11 +312,15 @@ function drawWatercolorLayer(brush) {
     }
 }
 
-function generateWaterscape() {
+// OPTIMIZED: Async generation with progress updates
+async function generateWaterscape() {
+    if (isGenerating) return;
+    isGenerating = true;
+    
     let startTime = performance.now();
     
     try {
-        console.log("🎨 Generating waterscape with Tyler Hobbs texture masking...", params);
+        console.log("🎨 Generating splotchy waterscape...", params);
         
         randomSeed(params.randomSeed);
         
@@ -333,7 +328,7 @@ function generateWaterscape() {
         background(255);
         drawBackground();
         
-        // Create brushes with variance information
+        // Create brushes with enhanced splotchiness
         let brushes = [];
         for (let i = 0; i < params.brushCount; i++) {
             let brush = createWatercolorBrush();
@@ -342,17 +337,23 @@ function generateWaterscape() {
             }
         }
         
-        console.log(`✨ Created ${brushes.length} brushes with variance mapping`);
+        console.log(`✨ Created ${brushes.length} highly irregular brushes`);
         
         if (brushes.length === 0) {
             throw new Error("No brushes created");
         }
         
-        // Tyler Hobbs approach: Draw 30-100 layers with unique texture masks each
-        console.log(`🎨 Drawing ${params.layersPerBrush} layers per brush with texture masking: ${params.textureMasking}`);
+        // Draw layers with enhanced splotchy variation
+        console.log(`🎨 Drawing ${params.layersPerBrush} splotchy layers per brush`);
+        
         for (let layer = 0; layer < params.layersPerBrush; layer++) {
             for (let brush of brushes) {
                 drawWatercolorLayer(brush);
+            }
+            
+            // Yield control occasionally for better UI responsiveness
+            if (layer % 5 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 1));
             }
         }
         
@@ -360,15 +361,13 @@ function generateWaterscape() {
         updateMetadata();
         
         let endTime = performance.now();
-        console.log(`🎨 Generation complete in ${(endTime - startTime).toFixed(1)}ms!`);
+        console.log(`🎨 Splotchy generation complete in ${(endTime - startTime).toFixed(1)}ms!`);
         
     } catch (error) {
         console.error('❌ Generation error:', error);
         
-        // Simple fallback that shows something
+        // Simple fallback
         background(255);
-        
-        // Draw some basic watercolor-like shapes
         for (let i = 0; i < 5; i++) {
             let colorIndex = int(random(palettes[currentPalette].length));
             let baseColor = palettes[currentPalette][colorIndex];
@@ -379,14 +378,24 @@ function generateWaterscape() {
             fill(r, g, b, 30);
             noStroke();
             
-            let x = random(width * 0.2, width * 0.8);
-            let y = random(height * 0.2, height * 0.8);
-            let size = random(50, 150);
+            // Even fallback shapes are more splotchy
+            let vertices = createSplotchyPolygon(
+                random(width * 0.2, width * 0.8),
+                random(height * 0.2, height * 0.8),
+                random(50, 100),
+                3
+            ).vertices;
             
-            circle(x, y, size);
+            beginShape();
+            for (let v of vertices) {
+                vertex(v.x, v.y);
+            }
+            endShape(CLOSE);
         }
         
         updateMetadata();
+    } finally {
+        isGenerating = false;
     }
 }
 
@@ -540,8 +549,10 @@ function setup() {
 }
 
 function generateNew() {
-    console.log("🔄 Generate new called");
-    generateWaterscape();
+    if (!isGenerating) {
+        console.log("🔄 Generate new called");
+        generateWaterscape();
+    }
 }
 
 function savePNG() {
