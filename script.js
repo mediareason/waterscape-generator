@@ -273,28 +273,32 @@ function drawWatercolorLayer(brush) {
         layerPolygon = deformPolygon(layerPolygon, 2, params.deformStrength * 0.5);
         
         if (params.textureMasking) {
-            // Create texture-masked layer using graphics buffers
+            // Create colored layer graphics buffer
             let layerGraphics = createGraphics(width, height);
             
-            // Fill with the brush color
-            layerGraphics.background(brush.r, brush.g, brush.b, params.opacity);
+            // Fill the entire layer with solid color
+            layerGraphics.fill(brush.r, brush.g, brush.b);
+            layerGraphics.noStroke();
+            
+            // Draw the blob shape
+            layerGraphics.beginShape();
+            for (let v of layerPolygon) {
+                layerGraphics.vertex(v.x, v.y);
+            }
+            layerGraphics.endShape(CLOSE);
             
             // Create texture mask
             let textureMask = createTextureMask(width, height, params.textureDensity, params.textureIntensity);
             
-            // Create blob mask  
-            let blobMask = createBlobMask(width, height, layerPolygon, 1.0);
+            // Apply texture mask to the colored layer
+            layerGraphics.mask(textureMask);
             
-            // Combine masks using darkest blend mode
-            let combinedMask = combineMasks(blobMask, textureMask);
-            
-            // Apply the combined mask to the colored layer
-            layerGraphics.mask(combinedMask);
-            
-            // Draw the masked layer onto the main canvas using multiply blend
+            // Draw the masked layer onto the main canvas with low opacity
+            tint(255, params.opacity);
             blendMode(MULTIPLY);
             image(layerGraphics, 0, 0);
             blendMode(BLEND); // Reset blend mode
+            noTint(); // Reset tint
             
         } else {
             // Traditional rendering without texture masking
