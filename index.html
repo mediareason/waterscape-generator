@@ -6,6 +6,8 @@
     <title>Waterscape</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
         * {
             margin: 0;
             padding: 0;
@@ -13,23 +15,40 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
             min-height: 100vh;
             display: flex;
-            gap: 20px;
-            padding: 20px;
+            gap: 1px;
+            color: #e4e4e7;
+            overflow: hidden;
         }
 
         .controls {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 25px;
-            width: 350px;
-            height: fit-content;
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: linear-gradient(180deg, #18181b 0%, #0f0f0f 100%);
+            border-right: 1px solid #27272a;
+            padding: 24px;
+            width: 380px;
+            height: 100vh;
+            overflow-y: auto;
+            box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+        }
+
+        .controls::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .controls::-webkit-scrollbar-track {
+            background: #18181b;
+        }
+
+        .controls::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 3px;
+        }
+
+        .controls::-webkit-scrollbar-thumb:hover {
+            background: #52525b;
         }
 
         .canvas-container {
@@ -37,176 +56,335 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px;
+            justify-content: center;
+            background: #0a0a0a;
+            padding: 32px;
+            position: relative;
         }
 
-        .control-group {
-            margin-bottom: 20px;
+        .app-header {
+            text-align: center;
+            margin-bottom: 32px;
+            border-bottom: 1px solid #27272a;
+            padding-bottom: 20px;
         }
 
-        .control-group h3 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 16px;
+        .app-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #f4f4f5;
+            letter-spacing: -0.02em;
+            margin-bottom: 4px;
+        }
+
+        .app-subtitle {
+            font-size: 13px;
+            color: #71717a;
+            font-weight: 400;
+        }
+
+        .control-section {
+            margin-bottom: 28px;
+            background: rgba(39, 39, 42, 0.3);
+            border: 1px solid #27272a;
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(8px);
+        }
+
+        .section-header {
+            color: #f4f4f5;
+            margin-bottom: 16px;
+            font-size: 14px;
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-header::before {
+            content: '';
+            width: 3px;
+            height: 14px;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border-radius: 2px;
         }
 
         .control-item {
-            margin-bottom: 12px;
+            margin-bottom: 20px;
         }
 
-        .control-item label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-            font-size: 14px;
+        .control-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
             font-weight: 500;
+            color: #d4d4d8;
         }
 
-        .control-item input[type="range"] {
+        .control-value {
+            color: #3b82f6;
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 12px;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .slider {
             width: 100%;
             height: 6px;
             border-radius: 3px;
-            background: #ddd;
+            background: #27272a;
             outline: none;
             -webkit-appearance: none;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.15s ease;
         }
 
-        .control-item input[type="range"]::-webkit-slider-thumb {
+        .slider:hover {
+            background: #3f3f46;
+        }
+
+        .slider::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: #667eea;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            border: 2px solid #0f0f0f;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3), 
+                        0 0 0 2px rgba(59, 130, 246, 0.1);
+            transition: all 0.15s ease;
         }
 
-        .control-item input[type="range"]::-moz-range-thumb {
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4), 
+                        0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .slider::-moz-range-thumb {
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: #667eea;
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
             cursor: pointer;
-            border: none;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            border: 2px solid #0f0f0f;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
         }
 
-        .control-item select {
+        .dropdown {
             width: 100%;
-            padding: 8px 12px;
-            border: 2px solid #ddd;
+            padding: 10px 12px;
+            border: 1px solid #27272a;
             border-radius: 8px;
-            background: white;
-            font-size: 14px;
+            background: #18181b;
+            color: #e4e4e7;
+            font-size: 13px;
+            font-weight: 500;
             outline: none;
-            transition: border-color 0.3s;
+            transition: all 0.15s ease;
+            cursor: pointer;
         }
 
-        .control-item select:focus {
-            border-color: #667eea;
+        .dropdown:hover {
+            border-color: #3f3f46;
+            background: #1f1f23;
         }
 
-        .button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        .dropdown:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 16px;
             border: none;
-            padding: 12px 24px;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin: 5px;
-        }
-
-        .button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .button:active {
-            transform: translateY(0);
-        }
-
-        .button.secondary {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        }
-
-        .button.secondary:hover {
-            box-shadow: 0 6px 20px rgba(56, 239, 125, 0.4);
-        }
-
-        .canvas-wrapper {
-            border-radius: 15px;
+            transition: all 0.15s ease;
+            position: relative;
             overflow: hidden;
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
-            background: white;
         }
 
-        .value-display {
-            display: inline-block;
-            color: #667eea;
-            font-weight: 600;
-            font-size: 12px;
-            margin-left: 8px;
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(34, 197, 94, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
         }
 
         .color-palette {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 8px;
-            margin-bottom: 15px;
+            margin-bottom: 16px;
         }
 
         .color-swatch {
             width: 100%;
-            height: 30px;
-            border: 2px solid #ddd;
+            height: 32px;
+            border: 2px solid #27272a;
             border-radius: 6px;
             cursor: pointer;
-            transition: transform 0.2s, border-color 0.2s;
+            transition: all 0.15s ease;
+            position: relative;
+            overflow: hidden;
         }
 
         .color-swatch:hover {
             transform: scale(1.05);
-            border-color: #667eea;
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         .color-swatch.active {
-            border-color: #667eea;
-            border-width: 3px;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
         }
 
-        h1 {
-            color: white;
-            text-align: center;
-            margin-bottom: 15px;
-            font-size: 28px;
-            font-weight: 300;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        .canvas-wrapper {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6),
+                        0 0 0 1px rgba(255, 255, 255, 0.05);
+            background: white;
+            position: relative;
         }
 
-        @media (max-width: 768px) {
+        .canvas-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #a1a1aa;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .version-info {
+            position: absolute;
+            bottom: 20px;
+            left: 24px;
+            font-size: 11px;
+            color: #52525b;
+            font-weight: 400;
+        }
+
+        @media (max-width: 1200px) {
             body {
                 flex-direction: column;
-                padding: 10px;
+                height: auto;
             }
+            
             .controls {
                 width: 100%;
+                height: auto;
+                max-height: 40vh;
+                border-right: none;
+                border-bottom: 1px solid #27272a;
             }
+            
+            .canvas-container {
+                height: 60vh;
+                padding: 20px;
+            }
+        }
+
+        /* Custom focus styles for accessibility */
+        .slider:focus-visible,
+        .dropdown:focus-visible,
+        .btn:focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
         }
     </style>
 </head>
 <body>
     <div class="controls">
-        <h3 style="text-align: center; margin-bottom: 20px; color: #667eea;">Waterscape Controls</h3>
+        <div class="app-header">
+            <div class="app-title">Waterscape</div>
+            <div class="app-subtitle">Generative Watercolor Studio</div>
+        </div>
         
-        <div class="control-group">
-            <h3>Color Palette</h3>
+        <div class="control-section">
+            <div class="section-header">Color Palette</div>
             <div class="color-palette" id="colorPalette"></div>
-            <select id="paletteSelect">
+            <select class="dropdown" id="paletteSelect">
                 <option value="vibrant">Vibrant</option>
                 <option value="pastel">Pastel</option>
                 <option value="earth">Earth Tones</option>
@@ -217,67 +395,105 @@
             </select>
         </div>
 
-        <div class="control-group">
-            <h3>Watercolor Parameters</h3>
+        <div class="control-section">
+            <div class="section-header">Generation</div>
             
             <div class="control-item">
-                <label for="brushCount">Brush Count: <span class="value-display" id="brushCountValue">12</span></label>
-                <input type="range" id="brushCount" min="5" max="20" value="12">
+                <div class="control-label">
+                    <span>Brush Count</span>
+                    <span class="control-value" id="brushCountValue">12</span>
+                </div>
+                <input type="range" class="slider" id="brushCount" min="5" max="20" value="12">
             </div>
 
             <div class="control-item">
-                <label for="layersPerBrush">Layers per Brush: <span class="value-display" id="layersPerBrushValue">25</span></label>
-                <input type="range" id="layersPerBrush" min="10" max="50" value="25">
+                <div class="control-label">
+                    <span>Layers per Brush</span>
+                    <span class="control-value" id="layersPerBrushValue">25</span>
+                </div>
+                <input type="range" class="slider" id="layersPerBrush" min="10" max="50" value="25">
             </div>
 
             <div class="control-item">
-                <label for="brushSize">Brush Size: <span class="value-display" id="brushSizeValue">90</span></label>
-                <input type="range" id="brushSize" min="40" max="150" value="90">
-            </div>
-
-            <div class="control-item">
-                <label for="edgeComplexity">Edge Complexity: <span class="value-display" id="edgeComplexityValue">4</span></label>
-                <input type="range" id="edgeComplexity" min="2" max="6" value="4">
-            </div>
-
-            <div class="control-item">
-                <label for="deformStrength">Blur Amount: <span class="value-display" id="deformStrengthValue">0.3</span></label>
-                <input type="range" id="deformStrength" min="0.1" max="0.6" step="0.1" value="0.3">
-            </div>
-
-            <div class="control-item">
-                <label for="opacity">Layer Opacity: <span class="value-display" id="opacityValue">8</span></label>
-                <input type="range" id="opacity" min="4" max="15" value="8">
-            </div>
-
-            <div class="control-item">
-                <label for="randomSeed">Random Seed: <span class="value-display" id="randomSeedValue">42</span></label>
-                <input type="range" id="randomSeed" min="1" max="1000" value="42">
+                <div class="control-label">
+                    <span>Brush Size</span>
+                    <span class="control-value" id="brushSizeValue">90</span>
+                </div>
+                <input type="range" class="slider" id="brushSize" min="40" max="150" value="90">
             </div>
         </div>
 
-        <div class="control-group">
-            <h3>Background</h3>
-            <select id="backgroundType">
-                <option value="white">White</option>
-                <option value="paper">Paper Texture</option>
-                <option value="gradient">Gradient</option>
-            </select>
+        <div class="control-section">
+            <div class="section-header">Watercolor FX</div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Edge Complexity</span>
+                    <span class="control-value" id="edgeComplexityValue">4</span>
+                </div>
+                <input type="range" class="slider" id="edgeComplexity" min="2" max="6" value="4">
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Blur Amount</span>
+                    <span class="control-value" id="deformStrengthValue">0.3</span>
+                </div>
+                <input type="range" class="slider" id="deformStrength" min="0.1" max="0.6" step="0.1" value="0.3">
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Layer Opacity</span>
+                    <span class="control-value" id="opacityValue">8</span>
+                </div>
+                <input type="range" class="slider" id="opacity" min="4" max="15" value="8">
+            </div>
         </div>
 
-        <div style="text-align: center;">
-            <button class="button" onclick="generateNew()">Generate New</button>
-            <button class="button secondary" onclick="savePNG()">Save PNG</button>
+        <div class="control-section">
+            <div class="section-header">Settings</div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Random Seed</span>
+                    <span class="control-value" id="randomSeedValue">42</span>
+                </div>
+                <input type="range" class="slider" id="randomSeed" min="1" max="1000" value="42">
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">
+                    <span>Background</span>
+                </div>
+                <select class="dropdown" id="backgroundType">
+                    <option value="white">White</option>
+                    <option value="paper">Paper Texture</option>
+                    <option value="gradient">Gradient</option>
+                </select>
+            </div>
         </div>
+
+        <div class="button-group">
+            <button class="btn btn-primary" onclick="generateNew()">Generate</button>
+            <button class="btn btn-secondary" onclick="savePNG()">Export PNG</button>
+        </div>
+
+        <div class="version-info">v2.0 • Tyler Hobbs Algorithm</div>
     </div>
 
     <div class="canvas-container">
-        <h1>Waterscape</h1>
-        <div class="canvas-wrapper" id="canvasWrapper"></div>
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <div class="canvas-info">800 × 600px</div>
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                Live
+            </div>
+        </div>
     </div>
 
     <script>
-        console.log("Script starting...");
+        console.log("🎨 Waterscape Studio v2.0 initializing...");
 
         // Color palettes
         const palettes = {
@@ -388,7 +604,7 @@
             }
         }
 
-        // Draw watercolor layer - FIXED VERSION
+        // Draw watercolor layer
         function drawWatercolorLayer(brush) {
             try {
                 if (!brush) return;
@@ -406,10 +622,10 @@
                 fill(brush.r, brush.g, brush.b, params.opacity);
                 noStroke();
                 
-                // Draw the shape - FIXED: Use correct p5.js syntax
+                // Draw the shape
                 beginShape();
                 for (let v of layerPolygon) {
-                    vertex(v.x, v.y);  // This is the correct p5.js function call
+                    vertex(v.x, v.y);
                 }
                 endShape(CLOSE);
                 
@@ -420,7 +636,7 @@
 
         function generateWaterscape() {
             try {
-                console.log("Starting generation with params:", params);
+                console.log("🎨 Generating waterscape...", params);
                 
                 randomSeed(params.randomSeed);
                 
@@ -437,7 +653,7 @@
                     }
                 }
                 
-                console.log(`Created ${brushes.length} brushes`);
+                console.log(`✨ Created ${brushes.length} brushes`);
                 
                 if (brushes.length === 0) {
                     throw new Error("No brushes created");
@@ -450,10 +666,10 @@
                     }
                 }
                 
-                console.log("Generation complete!");
+                console.log("🎨 Generation complete!");
                 
             } catch (error) {
-                console.error('Generation error:', error);
+                console.error('❌ Generation error:', error);
                 
                 // Simple fallback that shows something
                 background(255);
@@ -523,7 +739,7 @@
         }
 
         function setupControls() {
-            console.log("Setting up controls...");
+            console.log("🎛️ Setting up controls...");
             
             // Palette selector
             const paletteSelect = document.getElementById('paletteSelect');
@@ -568,11 +784,11 @@
 
         function setup() {
             try {
-                console.log("Setting up canvas...");
+                console.log("🚀 Setting up canvas...");
                 canvas = createCanvas(800, 600);
                 canvas.parent('canvasWrapper');
                 
-                console.log("Canvas created successfully");
+                console.log("✅ Canvas created successfully");
                 
                 setTimeout(() => {
                     setupControls();
@@ -581,22 +797,23 @@
                 }, 200);
                 
             } catch (error) {
-                console.error('Setup error:', error);
+                console.error('❌ Setup error:', error);
             }
         }
 
         function generateNew() {
-            console.log("Generate new called");
+            console.log("🔄 Generate new called");
             generateWaterscape();
         }
 
         function savePNG() {
             try {
                 if (canvas) {
+                    console.log("💾 Exporting PNG...");
                     saveCanvas(canvas, `waterscape_${Date.now()}`, 'png');
                 }
             } catch (error) {
-                console.error('Save error:', error);
+                console.error('❌ Export error:', error);
                 alert('Error saving image. Please try again.');
             }
         }
@@ -607,11 +824,11 @@
 
         // Error handling
         window.onerror = function(msg, url, lineNo, columnNo, error) {
-            console.error('JavaScript Error:', msg, 'at line', lineNo);
+            console.error('❌ JavaScript Error:', msg, 'at line', lineNo);
             return false;
         };
 
-        console.log("Script loaded successfully");
+        console.log("✅ Waterscape Studio loaded successfully");
     </script>
 </body>
 </html>
