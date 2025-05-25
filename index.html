@@ -222,22 +222,22 @@
             
             <div class="control-item">
                 <label for="brushCount">Brush Count: <span class="value-display" id="brushCountValue">15</span></label>
-                <input type="range" id="brushCount" min="5" max="30" value="15">
+                <input type="range" id="brushCount" min="5" max="25" value="15">
             </div>
 
             <div class="control-item">
-                <label for="layersPerBrush">Layers per Brush: <span class="value-display" id="layersPerBrushValue">50</span></label>
-                <input type="range" id="layersPerBrush" min="20" max="100" value="50">
+                <label for="layersPerBrush">Layers per Brush: <span class="value-display" id="layersPerBrushValue">30</span></label>
+                <input type="range" id="layersPerBrush" min="15" max="60" value="30">
             </div>
 
             <div class="control-item">
-                <label for="brushSize">Brush Size: <span class="value-display" id="brushSizeValue">120</span></label>
-                <input type="range" id="brushSize" min="50" max="200" value="120">
+                <label for="brushSize">Brush Size: <span class="value-display" id="brushSizeValue">100</span></label>
+                <input type="range" id="brushSize" min="40" max="180" value="100">
             </div>
 
             <div class="control-item">
-                <label for="recursionDepth">Edge Detail: <span class="value-display" id="recursionDepthValue">6</span></label>
-                <input type="range" id="recursionDepth" min="3" max="8" value="6">
+                <label for="edgeDetail">Edge Detail: <span class="value-display" id="edgeDetailValue">5</span></label>
+                <input type="range" id="edgeDetail" min="3" max="8" value="5">
             </div>
 
             <div class="control-item">
@@ -246,13 +246,8 @@
             </div>
 
             <div class="control-item">
-                <label for="opacity">Layer Opacity: <span class="value-display" id="opacityValue">4</span></label>
-                <input type="range" id="opacity" min="2" max="15" value="4">
-            </div>
-
-            <div class="control-item">
-                <label for="textureIntensity">Paper Texture: <span class="value-display" id="textureIntensityValue">0.3</span></label>
-                <input type="range" id="textureIntensity" min="0" max="1" step="0.1" value="0.3">
+                <label for="opacity">Layer Opacity: <span class="value-display" id="opacityValue">6</span></label>
+                <input type="range" id="opacity" min="3" max="15" value="6">
             </div>
 
             <div class="control-item">
@@ -296,20 +291,18 @@
         let currentPalette = 'vibrant';
         let params = {
             brushCount: 15,
-            layersPerBrush: 50,
-            brushSize: 120,
-            recursionDepth: 6,
+            layersPerBrush: 30,
+            brushSize: 100,
+            edgeDetail: 5,
             deformStrength: 0.4,
-            opacity: 4,
-            textureIntensity: 0.3,
+            opacity: 6,
             randomSeed: 42,
             backgroundType: 'white'
         };
 
         let canvas;
-        let textureLayer;
 
-        // Tyler Hobbs-inspired gaussian random function
+        // Gaussian random function
         function gaussianRandom(mean = 0, sigma = 1) {
             let u = 0, v = 0;
             while(u === 0) u = Math.random();
@@ -318,109 +311,70 @@
             return z0 * sigma + mean;
         }
 
-        // Recursive polygon deformation - Tyler Hobbs technique
-        function recursiveDeform(vertices, depth, baseVariance = 1.0) {
-            if (depth <= 0) return vertices;
+        // Enhanced deformation with multiple recursions
+        function deformPolygonAdvanced(vertices, iterations) {
+            let result = [...vertices];
             
-            let newVertices = [];
-            
-            for (let i = 0; i < vertices.length; i++) {
-                let current = vertices[i];
-                let next = vertices[(i + 1) % vertices.length];
+            for (let iter = 0; iter < iterations; iter++) {
+                let newVertices = [];
                 
-                newVertices.push(current);
-                
-                // Calculate midpoint
-                let midX = (current.x + next.x) / 2;
-                let midY = (current.y + next.y) / 2;
-                
-                // Apply gaussian deformation based on variance
-                let variance = baseVariance * current.variance * params.deformStrength;
-                let deformX = gaussianRandom(0, variance * 10);
-                let deformY = gaussianRandom(0, variance * 10);
-                
-                // Create new midpoint
-                let newPoint = {
-                    x: midX + deformX,
-                    y: midY + deformY,
-                    variance: current.variance * (0.7 + random(0.3)) // Inherit and vary
-                };
-                
-                newVertices.push(newPoint);
-            }
-            
-            return recursiveDeform(newVertices, depth - 1, baseVariance * 0.8);
-        }
-
-        // Create base polygon with variance
-        function createBasePolygon(x, y, radius, sides) {
-            let vertices = [];
-            for (let i = 0; i < sides; i++) {
-                let angle = (TWO_PI / sides) * i;
-                let vx = x + cos(angle) * radius;
-                let vy = y + sin(angle) * radius;
-                
-                // Assign variance - some edges sharp, some soft
-                let variance = random(0.3, 1.0);
-                vertices.push({x: vx, y: vy, variance: variance});
-            }
-            return vertices;
-        }
-
-        // Create texture mask for each layer
-        function createTextureMask() {
-            let mask = createGraphics(width, height);
-            mask.background(255);
-            
-            if (params.textureIntensity > 0) {
-                mask.noStroke();
-                
-                // Create paper texture with small spots
-                let spotCount = int(params.textureIntensity * 2000);
-                for (let i = 0; i < spotCount; i++) {
-                    let spotSize = abs(gaussianRandom(2, 1));
-                    let spotAlpha = random(50, 150);
-                    mask.fill(255 - spotAlpha);
-                    mask.circle(random(width), random(height), spotSize);
+                for (let i = 0; i < result.length; i++) {
+                    let current = result[i];
+                    let next = result[(i + 1) % result.length];
+                    
+                    newVertices.push(current);
+                    
+                    // Create midpoint with gaussian deformation
+                    let midX = (current.x + next.x) / 2;
+                    let midY = (current.y + next.y) / 2;
+                    
+                    let strength = params.deformStrength * (20 / (iter + 1)); // Reduce strength each iteration
+                    let deformX = gaussianRandom(0, strength);
+                    let deformY = gaussianRandom(0, strength);
+                    
+                    newVertices.push({
+                        x: midX + deformX,
+                        y: midY + deformY
+                    });
                 }
                 
-                // Add some larger texture variations
-                for (let i = 0; i < spotCount * 0.2; i++) {
-                    let spotSize = abs(gaussianRandom(8, 3));
-                    let spotAlpha = random(20, 80);
-                    mask.fill(255 - spotAlpha);
-                    mask.circle(random(width), random(height), spotSize);
-                }
+                result = newVertices;
             }
             
-            return mask;
+            return result;
         }
 
-        // Enhanced watercolor brush using Tyler Hobbs technique
+        // Create enhanced watercolor brush
         function createWatercolorBrush() {
             let x = random(width * 0.15, width * 0.85);
             let y = random(height * 0.15, height * 0.85);
-            let size = random(params.brushSize * 0.5, params.brushSize * 1.5);
+            let size = random(params.brushSize * 0.6, params.brushSize * 1.4);
             let sides = int(random(6, 12));
             
-            // Pick random color from current palette
+            // Pick random color
             let colorIndex = int(random(palettes[currentPalette].length));
             let baseColor = color(palettes[currentPalette][colorIndex]);
             
-            // Add color variation
-            let r = red(baseColor) + random(-20, 20);
-            let g = green(baseColor) + random(-20, 20);
-            let b = blue(baseColor) + random(-20, 20);
+            // Color variation
+            let r = red(baseColor) + random(-25, 25);
+            let g = green(baseColor) + random(-25, 25);
+            let b = blue(baseColor) + random(-25, 25);
             
             r = constrain(r, 0, 255);
             g = constrain(g, 0, 255);
             b = constrain(b, 0, 255);
             
-            // Create base polygon with variance
-            let basePolygon = createBasePolygon(x, y, size, sides);
+            // Create base polygon
+            let basePolygon = [];
+            for (let i = 0; i < sides; i++) {
+                let angle = (TWO_PI / sides) * i;
+                let vx = x + cos(angle) * size;
+                let vy = y + sin(angle) * size;
+                basePolygon.push({x: vx, y: vy});
+            }
             
-            // Apply initial deformation to create base shape
-            basePolygon = recursiveDeform(basePolygon, params.recursionDepth);
+            // Apply advanced deformation
+            basePolygon = deformPolygonAdvanced(basePolygon, params.edgeDetail);
             
             return {
                 basePolygon: basePolygon,
@@ -431,46 +385,49 @@
             };
         }
 
-        // Draw a single watercolor layer
-        function drawWatercolorLayer(brush, layerIndex) {
+        // Draw single watercolor layer with texture
+        function drawWatercolorLayer(brush) {
             // Create slight variation for this layer
             let layerPolygon = brush.basePolygon.map(vertex => ({
-                x: vertex.x + gaussianRandom(0, 2),
-                y: vertex.y + gaussianRandom(0, 2),
-                variance: vertex.variance
+                x: vertex.x + gaussianRandom(0, 1.5),
+                y: vertex.y + gaussianRandom(0, 1.5)
             }));
             
-            // Apply additional deformation for this layer
-            layerPolygon = recursiveDeform(layerPolygon, 3, 0.5);
+            // Additional minor deformation
+            layerPolygon = deformPolygonAdvanced(layerPolygon, 2);
             
-            // Create texture mask for this layer
-            let textureMask = createTextureMask();
+            // Set very low opacity for authentic watercolor effect
+            fill(red(brush.color), green(brush.color), blue(brush.color), params.opacity);
+            noStroke();
             
-            // Create layer graphics
-            let layer = createGraphics(width, height);
-            layer.fill(red(brush.color), green(brush.color), blue(brush.color), params.opacity);
-            layer.noStroke();
-            
-            layer.beginShape();
+            // Draw the shape
+            beginShape();
             for (let vertex of layerPolygon) {
-                layer.vertex(vertex.x, vertex.y);
+                vertex(vertex.x, vertex.y);
             }
-            layer.endShape(CLOSE);
+            endShape(CLOSE);
             
-            // Apply texture mask
-            layer.mask(textureMask);
-            
-            // Blend the layer onto main canvas
-            image(layer, 0, 0);
+            // Add texture spots occasionally
+            if (random() < 0.3) {
+                fill(red(brush.color), green(brush.color), blue(brush.color), params.opacity * 0.5);
+                for (let i = 0; i < 3; i++) {
+                    let spotX = brush.x + random(-brush.size, brush.size);
+                    let spotY = brush.y + random(-brush.size, brush.size);
+                    let spotSize = random(1, 4);
+                    circle(spotX, spotY, spotSize);
+                }
+            }
         }
 
         function generateWaterscape() {
             try {
                 randomSeed(params.randomSeed);
                 
-                // Clear canvas
+                // Clear and setup
                 clear();
                 drawBackground();
+                
+                console.log("Starting generation...");
                 
                 // Create brushes
                 let brushes = [];
@@ -478,16 +435,30 @@
                     brushes.push(createWatercolorBrush());
                 }
                 
-                // Interleave layers from different brushes for proper blending
-                let totalLayers = params.layersPerBrush;
-                for (let layer = 0; layer < totalLayers; layer++) {
+                console.log(`Created ${brushes.length} brushes`);
+                
+                // Draw layers - interleave for proper blending
+                for (let layer = 0; layer < params.layersPerBrush; layer++) {
                     for (let brush of brushes) {
-                        drawWatercolorLayer(brush, layer);
+                        drawWatercolorLayer(brush);
+                    }
+                    
+                    // Progress feedback
+                    if (layer % 10 === 0) {
+                        console.log(`Completed layer ${layer}/${params.layersPerBrush}`);
                     }
                 }
                 
+                console.log("Generation complete!");
+                
             } catch (error) {
                 console.error('Generation error:', error);
+                // Fallback to simple generation
+                background(255);
+                fill(255, 0, 0, 50);
+                circle(width/2, height/2, 100);
+                fill(0, 255, 0, 50);
+                circle(width/2 + 50, height/2, 100);
             }
         }
 
@@ -498,31 +469,24 @@
                     break;
                 case 'paper':
                     background(252, 248, 240);
-                    drawPaperTexture();
+                    // Simple paper texture
+                    noStroke();
+                    for (let i = 0; i < 500; i++) {
+                        fill(240, 235, 220, random(10, 25));
+                        circle(random(width), random(height), random(0.5, 2));
+                    }
                     break;
                 case 'gradient':
-                    drawGradientBackground();
+                    for (let y = 0; y < height; y++) {
+                        let alpha = map(y, 0, height, 0, 1);
+                        let c = lerpColor(color(255), color(240, 248, 255), alpha);
+                        stroke(c);
+                        strokeWeight(1);
+                        line(0, y, width, y);
+                    }
                     break;
                 default:
                     background(255);
-            }
-        }
-
-        function drawPaperTexture() {
-            noStroke();
-            for (let i = 0; i < 1000; i++) {
-                fill(240, 235, 220, random(5, 20));
-                circle(random(width), random(height), random(0.5, 2));
-            }
-        }
-
-        function drawGradientBackground() {
-            for (let y = 0; y < height; y++) {
-                let alpha = map(y, 0, height, 0, 1);
-                let c = lerpColor(color(255, 255, 255), color(240, 248, 255), alpha);
-                stroke(c);
-                strokeWeight(1);
-                line(0, y, width, y);
             }
         }
 
@@ -560,12 +524,12 @@
                 
                 if (control && valueDisplay) {
                     control.addEventListener('input', (e) => {
-                        params[param] = (param === 'deformStrength' || param === 'textureIntensity') ? 
+                        params[param] = param === 'deformStrength' ? 
                             parseFloat(e.target.value) : 
                             parseInt(e.target.value);
                         
                         valueDisplay.textContent = 
-                            (param === 'deformStrength' || param === 'textureIntensity') ? 
+                            param === 'deformStrength' ? 
                             params[param].toFixed(1) : 
                             params[param];
                         
@@ -586,13 +550,16 @@
 
         function setup() {
             try {
+                console.log("Setting up canvas...");
                 canvas = createCanvas(800, 600);
                 canvas.parent('canvasWrapper');
                 colorMode(RGB, 255, 255, 255, 100);
                 
                 setTimeout(() => {
+                    console.log("Setting up controls...");
                     setupControls();
                     updateColorPalette();
+                    console.log("Generating initial waterscape...");
                     generateWaterscape();
                 }, 100);
                 
@@ -602,6 +569,7 @@
         }
 
         function generateNew() {
+            console.log("Generate new called");
             if (typeof generateWaterscape === 'function') {
                 generateWaterscape();
             }
