@@ -3,15 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Waterscape</title>
+    <title>Waterscape Debug</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="controls">
         <div class="app-header">
-            <div class="app-title">Waterscape</div>
+            <div class="app-title">Waterscape Debug</div>
             <div class="app-subtitle">Generative Watercolor Studio</div>
+        </div>
+        
+        <div class="debug-info" style="background: #e3f2fd; padding: 10px; border-radius: 6px; margin: 10px 0; font-size: 12px;">
+            <strong>Debug Status:</strong><br>
+            <div id="debugLog">Initializing...</div>
         </div>
         
         <div class="control-section">
@@ -26,8 +31,41 @@
                 <option value="forest">Forest</option>
                 <option value="monochrome">Monochrome</option>
             </select>
-            <div class="palette-info">
-                💡 Click any color to edit with the color picker
+        </div>
+
+        <div class="control-section">
+            <div class="section-header">🌊 Advanced Water Effects</div>
+            
+            <div class="control-item">
+                <div class="control-label">
+                    <span>💧 Color Bleeding</span>
+                    <span class="control-value" id="colorBleedingValue">On</span>
+                </div>
+                <input type="checkbox" class="checkbox" id="colorBleeding" checked>
+            </div>
+
+            <div class="control-item bleeding-control">
+                <div class="control-label">
+                    <span>Bleeding Intensity</span>
+                    <span class="control-value" id="bleedingIntensityValue">0.6</span>
+                </div>
+                <input type="range" class="slider" id="bleedingIntensity" min="0.2" max="1.0" step="0.1" value="0.6">
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">
+                    <span>🎨 Wet-on-Wet</span>
+                    <span class="control-value" id="wetOnWetValue">On</span>
+                </div>
+                <input type="checkbox" class="checkbox" id="wetOnWet" checked>
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">
+                    <span>🏔️ Depth Effect</span>
+                    <span class="control-value" id="depthEffectValue">On</span>
+                </div>
+                <input type="checkbox" class="checkbox" id="depthEffect" checked>
             </div>
         </div>
 
@@ -59,139 +97,12 @@
             </div>
         </div>
 
-        <div class="control-section">
-            <div class="section-header">🌊 Advanced Water Effects</div>
-            
-            <div class="control-item">
-                <div class="control-label">
-                    <span>💧 Color Bleeding</span>
-                    <span class="control-value" id="colorBleedingValue">On</span>
-                </div>
-                <input type="checkbox" class="checkbox" id="colorBleeding" checked>
-            </div>
-
-            <div class="control-item bleeding-control">
-                <div class="control-label">
-                    <span>Bleeding Intensity</span>
-                    <span class="control-value" id="bleedingIntensityValue">0.6</span>
-                </div>
-                <input type="range" class="slider" id="bleedingIntensity" min="0.2" max="1.0" step="0.1" value="0.6">
-            </div>
-
-            <div class="control-item">
-                <div class="control-label">
-                    <span>🎨 Wet-on-Wet</span>
-                    <span class="control-value" id="wetOnWetValue">On</span>
-                </div>
-                <input type="checkbox" class="checkbox" id="wetOnWet" checked>
-            </div>
-
-            <div class="control-item wet-control">
-                <div class="control-label">
-                    <span>Wet Blend Radius</span>
-                    <span class="control-value" id="wetBlendRadiusValue">40</span>
-                </div>
-                <input type="range" class="slider" id="wetBlendRadius" min="20" max="80" value="40">
-            </div>
-
-            <div class="control-item">
-                <div class="control-label">
-                    <span>🏔️ Depth Effect</span>
-                    <span class="control-value" id="depthEffectValue">On</span>
-                </div>
-                <input type="checkbox" class="checkbox" id="depthEffect" checked>
-            </div>
-
-            <div class="control-item depth-control">
-                <div class="control-label">
-                    <span>Depth Layers</span>
-                    <span class="control-value" id="depthLayersValue">3</span>
-                </div>
-                <input type="range" class="slider" id="depthLayers" min="1" max="5" value="3">
-            </div>
-        </div>
-
-        <div class="control-section">
-            <div class="section-header">Watercolor FX</div>
-            
-            <div class="control-item">
-                <div class="control-label">
-                    <span>Edge Complexity</span>
-                    <span class="control-value" id="edgeComplexityValue">4</span>
-                </div>
-                <input type="range" class="slider" id="edgeComplexity" min="2" max="6" value="4">
-            </div>
-
-            <div class="control-item">
-                <div class="control-label">
-                    <span>Blur Amount</span>
-                    <span class="control-value" id="deformStrengthValue">0.3</span>
-                </div>
-                <input type="range" class="slider" id="deformStrength" min="0.1" max="0.6" step="0.1" value="0.3">
-            </div>
-
-            <div class="control-item">
-                <div class="control-label">
-                    <span>Layer Opacity</span>
-                    <span class="control-value" id="opacityValue">8</span>
-                </div>
-                <input type="range" class="slider" id="opacity" min="4" max="15" value="8">
-            </div>
-
-            <div class="control-item">
-                <div class="control-label">
-                    <span>✨ Texture Masking</span>
-                    <span class="control-value" id="textureMaskingValue">On</span>
-                </div>
-                <input type="checkbox" class="checkbox" id="textureMasking" checked>
-            </div>
-
-            <div class="control-item texture-control">
-                <div class="control-label">
-                    <span>Texture Intensity</span>
-                    <span class="control-value" id="textureIntensityValue">0.7</span>
-                </div>
-                <input type="range" class="slider" id="textureIntensity" min="0.2" max="1.0" step="0.1" value="0.7">
-            </div>
-
-            <div class="control-item texture-control">
-                <div class="control-label">
-                    <span>Texture Density</span>
-                    <span class="control-value" id="textureDensityValue">800</span>
-                </div>
-                <input type="range" class="slider" id="textureDensity" min="300" max="1500" value="800">
-            </div>
-        </div>
-
-        <div class="control-section">
-            <div class="section-header">Settings</div>
-            
-            <div class="control-item">
-                <div class="control-label">
-                    <span>Random Seed</span>
-                    <span class="control-value" id="randomSeedValue">42</span>
-                </div>
-                <input type="range" class="slider" id="randomSeed" min="1" max="1000" value="42">
-            </div>
-
-            <div class="control-item">
-                <div class="control-label">
-                    <span>Background</span>
-                </div>
-                <select class="dropdown" id="backgroundType">
-                    <option value="white">White</option>
-                    <option value="paper">Paper Texture</option>
-                    <option value="gradient">Gradient</option>
-                </select>
-            </div>
-        </div>
-
         <div class="button-group">
             <button class="btn btn-primary" onclick="generateNew()">Generate</button>
             <button class="btn btn-secondary" onclick="savePNG()">Export PNG</button>
         </div>
 
-        <div class="version-info">v2.2 • Advanced Water Effects: Color Bleeding + Wet-on-Wet + Depth</div>
+        <div class="version-info">v2.2 Debug • Advanced Water Effects</div>
     </div>
 
     <div class="canvas-container">
@@ -225,10 +136,36 @@
         </div>
     </div>
 
-    <!-- Load all script components -->
+    <!-- Load only the main script -->
     <script src="script.js"></script>
-    <script src="script-part3.js"></script>
-    <script src="script-remaining.js"></script>
-    <script src="script-final.js"></script>
+    
+    <script>
+        // Add debug logging to see what's happening
+        function debugLog(message) {
+            console.log(`🔍 DEBUG: ${message}`);
+            const debugDiv = document.getElementById('debugLog');
+            if (debugDiv) {
+                debugDiv.innerHTML += '<br>' + message;
+            }
+        }
+        
+        // Check if our main functions are loaded
+        window.addEventListener('load', () => {
+            debugLog('Window loaded');
+            debugLog('typeof setup: ' + typeof setup);
+            debugLog('typeof generateWaterscape: ' + typeof generateWaterscape);
+            debugLog('typeof p5: ' + typeof p5);
+            
+            // Force setup if p5 is ready but setup hasn't run
+            setTimeout(() => {
+                if (typeof setup === 'function' && !canvas) {
+                    debugLog('Manually calling setup...');
+                    setup();
+                }
+            }, 1000);
+        });
+        
+        debugLog('Debug script loaded');
+    </script>
 </body>
 </html>
