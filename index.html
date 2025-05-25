@@ -388,15 +388,15 @@
             }
         }
 
-        // Draw watercolor layer
+        // Draw watercolor layer - FIXED VERSION
         function drawWatercolorLayer(brush) {
             try {
                 if (!brush) return;
                 
                 // Create slight variation for this layer
-                let layerPolygon = brush.basePolygon.map(vertex => ({
-                    x: vertex.x + random(-2, 2),
-                    y: vertex.y + random(-2, 2)
+                let layerPolygon = brush.basePolygon.map(v => ({
+                    x: v.x + random(-2, 2),
+                    y: v.y + random(-2, 2)
                 }));
                 
                 // Apply minor additional deformation
@@ -406,10 +406,10 @@
                 fill(brush.r, brush.g, brush.b, params.opacity);
                 noStroke();
                 
-                // Draw the shape
+                // Draw the shape - FIXED: Use correct p5.js syntax
                 beginShape();
-                for (let vertex of layerPolygon) {
-                    vertex(vertex.x, vertex.y);
+                for (let v of layerPolygon) {
+                    vertex(v.x, v.y);  // This is the correct p5.js function call
                 }
                 endShape(CLOSE);
                 
