@@ -50,43 +50,24 @@ function gaussianRandom(mean = 0, stdev = 1) {
     return z * stdev + mean;
 }
 
-// OPTIMIZED: Create or get cached texture pattern
-function getTexturePattern(density, intensity, w, h) {
-    let cacheKey = `texture_${density}_${intensity}_${w}_${h}`;
+// Create texture mask using Tyler Hobbs approach - random circles for opacity variation
+function createTextureMask(w, h, circleCount, intensity) {
+    let mask = createGraphics(w, h);
+    mask.background(0); // Black = transparent areas
+    mask.noStroke();
     
-    if (textureCache.has(cacheKey)) {
-        return textureCache.get(cacheKey);
-    }
-    
-    console.log(`Creating new texture pattern: ${density} circles`);
-    let texturePattern = createGraphics(w, h);
-    texturePattern.background(255);
-    texturePattern.noStroke();
-    
-    // Reduced circle count for performance
-    let circleCount = Math.min(density / 10, 200); // Max 200 circles per pattern
-    
+    // Add random circles - white areas will be visible
     for (let i = 0; i < circleCount; i++) {
-        let tx = random(w);
-        let ty = random(h);
-        let radius = abs(gaussianRandom(w * 0.015, w * 0.01));
-        let opacity = random(intensity * 150); // Reduced opacity range
+        let x = random(w);
+        let y = random(h);
+        let radius = abs(gaussianRandom(w * 0.01, w * 0.005));
+        let opacity = random(intensity * 255);
         
-        texturePattern.fill(0, opacity);
-        texturePattern.circle(tx, ty, radius);
+        mask.fill(255, opacity);
+        mask.circle(x, y, radius);
     }
     
-    // Cache the pattern
-    textureCache.set(cacheKey, texturePattern);
-    return texturePattern;
-}
-
-// OPTIMIZED: Get or create reusable graphics buffer
-function getReusableGraphics(w, h) {
-    if (!reusableGraphics || reusableGraphics.width !== w || reusableGraphics.height !== h) {
-        reusableGraphics = createGraphics(w, h);
-    }
-    return reusableGraphics;
+    return mask;
 }
 
 // Color picker functions
@@ -163,42 +144,62 @@ function updateMetadata() {
     document.getElementById('layerCountInfo').textContent = totalLayers;
 }
 
-// Simple but effective deformation function
-function deformPolygon(vertices, complexity, strength) {
+// Enhanced deformation function with variance support (Tyler Hobbs approach)
+function deformPolygonWithVariance(vertices, complexity, strength, varianceMap = null) {
     let result = JSON.parse(JSON.stringify(vertices)); // Deep copy
+    
+    // If no variance map provided, create uniform variance
+    if (!varianceMap) {
+        varianceMap = new Array(vertices.length).fill(1.0);
+    }
     
     // Apply multiple rounds of edge subdivision and deformation
     for (let round = 0; round < complexity; round++) {
         let newVertices = [];
+        let newVarianceMap = [];
         let currentStrength = strength * (1 / (round + 1)); // Reduce strength each round
         
         for (let i = 0; i < result.length; i++) {
             let current = result[i];
             let next = result[(i + 1) % result.length];
+            let currentVariance = varianceMap[i] || 1.0;
             
             newVertices.push(current);
+            newVarianceMap.push(currentVariance * 0.8); // Reduce variance for existing points
             
-            // Create midpoint with random deformation
+            // Create midpoint with random deformation based on variance
             let midX = (current.x + next.x) / 2;
             let midY = (current.y + next.y) / 2;
             
-            // Add randomness
-            let deformX = (Math.random() - 0.5) * currentStrength * 40;
-            let deformY = (Math.random() - 0.5) * currentStrength * 40;
+            // Apply variance to deformation strength
+            let varianceStrength = currentVariance * currentStrength;
+            let deformX = (Math.random() - 0.5) * varianceStrength * 40;
+            let deformY = (Math.random() - 0.5) * varianceStrength * 40;
             
             newVertices.push({
                 x: midX + deformX,
                 y: midY + deformY
             });
+            
+            // Child variance inherits from parent with some randomization
+            let childVariance = currentVariance * (0.7 + Math.random() * 0.3);
+            newVarianceMap.push(childVariance);
         }
         
         result = newVertices;
+        varianceMap = newVarianceMap;
     }
     
-    return result;
+    return { vertices: result, variance: varianceMap };
 }
 
-// Create watercolor brush
+// Simple but effective deformation function (backward compatibility)
+function deformPolygon(vertices, complexity, strength) {
+    let result = deformPolygonWithVariance(vertices, complexity, strength);
+    return result.vertices;
+}
+
+// Create watercolor brush with variance information
 function createWatercolorBrush() {
     try {
         let x = random(width * 0.2, width * 0.8);
@@ -222,18 +223,23 @@ function createWatercolorBrush() {
         
         // Create base polygon
         let basePolygon = [];
+        let baseVariance = [];
         for (let i = 0; i < sides; i++) {
             let angle = (TWO_PI / sides) * i;
             let vx = x + cos(angle) * size;
             let vy = y + sin(angle) * size;
             basePolygon.push({x: vx, y: vy});
+            
+            // Assign random variance to each edge (some sharp, some soft)
+            baseVariance.push(random(0.3, 1.5));
         }
         
-        // Apply deformation
-        basePolygon = deformPolygon(basePolygon, params.edgeComplexity, params.deformStrength);
+        // Apply initial deformation with variance
+        let deformed = deformPolygonWithVariance(basePolygon, params.edgeComplexity, params.deformStrength, baseVariance);
         
         return {
-            basePolygon: basePolygon,
+            basePolygon: deformed.vertices,
+            baseVariance: deformed.variance,
             r: r,
             g: g,
             b: b,
@@ -247,44 +253,46 @@ function createWatercolorBrush() {
     }
 }
 
-// OPTIMIZED: Draw watercolor layer with performance improvements
-function drawWatercolorLayer(brush, texturePattern = null) {
+// Tyler Hobbs approach: Draw watercolor layer with proper texture masking
+function drawWatercolorLayer(brush) {
     try {
         if (!brush) return;
         
-        // Create slight variation for this layer
-        let layerPolygon = brush.basePolygon.map(v => ({
-            x: v.x + random(-2, 2),
-            y: v.y + random(-2, 2)
-        }));
+        // Create layer variation by deforming the base polygon more (Tyler Hobbs step 1)
+        let layerDeformation = deformPolygonWithVariance(
+            brush.basePolygon, 
+            4, // 4-5 additional deformation rounds
+            params.deformStrength * 0.8, 
+            brush.baseVariance
+        );
         
-        // Apply minor additional deformation
-        layerPolygon = deformPolygon(layerPolygon, 2, params.deformStrength * 0.5);
-        
-        if (params.textureMasking && texturePattern) {
-            // Use reusable graphics buffer instead of creating new one
-            let layerGraphics = getReusableGraphics(width, height);
-            layerGraphics.clear();
+        if (params.textureMasking) {
+            // Tyler Hobbs approach: Create texture-masked layer
             
-            // Draw the blob shape in solid color
-            layerGraphics.fill(brush.r, brush.g, brush.b);
-            layerGraphics.noStroke();
-            layerGraphics.beginShape();
-            for (let v of layerPolygon) {
-                layerGraphics.vertex(v.x, v.y);
+            // Step 1: Create the colored shape layer
+            let shapeLayer = createGraphics(width, height);
+            shapeLayer.fill(brush.r, brush.g, brush.b);
+            shapeLayer.noStroke();
+            shapeLayer.beginShape();
+            for (let v of layerDeformation.vertices) {
+                shapeLayer.vertex(v.x, v.y);
             }
-            layerGraphics.endShape(CLOSE);
+            shapeLayer.endShape(CLOSE);
             
-            // Apply cached texture pattern
-            layerGraphics.blendMode(MULTIPLY);
-            layerGraphics.image(texturePattern, 0, 0);
-            layerGraphics.blendMode(BLEND);
+            // Step 2: Create unique texture mask for this layer
+            let textureMask = createTextureMask(
+                width, 
+                height, 
+                params.textureDensity / 4, // Reduced for performance
+                params.textureIntensity
+            );
             
-            // Draw the textured layer onto the main canvas
-            tint(255, params.opacity);
-            blendMode(MULTIPLY);
-            image(layerGraphics, 0, 0);
-            blendMode(BLEND);
+            // Step 3: Apply mask to shape (this creates the absorption effect)
+            shapeLayer.mask(textureMask);
+            
+            // Step 4: Draw masked layer with low opacity (Tyler Hobbs: ~4%)
+            tint(255, params.opacity * 0.5); // Reduced opacity for proper buildup
+            image(shapeLayer, 0, 0);
             noTint();
             
         } else {
@@ -293,7 +301,7 @@ function drawWatercolorLayer(brush, texturePattern = null) {
             noStroke();
             
             beginShape();
-            for (let v of layerPolygon) {
+            for (let v of layerDeformation.vertices) {
                 vertex(v.x, v.y);
             }
             endShape(CLOSE);
@@ -301,6 +309,15 @@ function drawWatercolorLayer(brush, texturePattern = null) {
         
     } catch (error) {
         console.error("Error drawing layer:", error);
+        
+        // Fallback to simple drawing if masking fails
+        fill(brush.r, brush.g, brush.b, params.opacity);
+        noStroke();
+        beginShape();
+        for (let v of brush.basePolygon) {
+            vertex(v.x, v.y);
+        }
+        endShape(CLOSE);
     }
 }
 
@@ -308,21 +325,15 @@ function generateWaterscape() {
     let startTime = performance.now();
     
     try {
-        console.log("🎨 Generating waterscape...", params);
+        console.log("🎨 Generating waterscape with Tyler Hobbs texture masking...", params);
         
         randomSeed(params.randomSeed);
-        
-        // Clear texture cache if parameters changed
-        if (textureCache.size > 5) {
-            textureCache.clear();
-            console.log("🧹 Cleared texture cache");
-        }
         
         // Clear canvas
         background(255);
         drawBackground();
         
-        // Create brushes
+        // Create brushes with variance information
         let brushes = [];
         for (let i = 0; i < params.brushCount; i++) {
             let brush = createWatercolorBrush();
@@ -331,28 +342,17 @@ function generateWaterscape() {
             }
         }
         
-        console.log(`✨ Created ${brushes.length} brushes`);
+        console.log(`✨ Created ${brushes.length} brushes with variance mapping`);
         
         if (brushes.length === 0) {
             throw new Error("No brushes created");
         }
         
-        // OPTIMIZED: Create texture pattern once if needed
-        let texturePattern = null;
-        if (params.textureMasking) {
-            texturePattern = getTexturePattern(
-                params.textureDensity, 
-                params.textureIntensity, 
-                width, 
-                height
-            );
-        }
-        
-        // Draw layers with optimized texture application
+        // Tyler Hobbs approach: Draw 30-100 layers with unique texture masks each
         console.log(`🎨 Drawing ${params.layersPerBrush} layers per brush with texture masking: ${params.textureMasking}`);
         for (let layer = 0; layer < params.layersPerBrush; layer++) {
             for (let brush of brushes) {
-                drawWatercolorLayer(brush, texturePattern);
+                drawWatercolorLayer(brush);
             }
         }
         
