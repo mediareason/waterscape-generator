@@ -70,163 +70,107 @@ function createTextureMask(w, h, intensity) {
     return mask;
 }
 
-// HYBRID METHOD: Combine Tyler Hobbs + Drip Simulation + Blob Subdivision
-function createHybridSplotchyShape(centerX, centerY, baseRadius, params) {
-    let vertices = [];
-    
-    if (params.randomWalkMode) {
-        // Random Walk Mode - Organic spreading paint effect
-        return createRandomWalkShape(centerX, centerY, baseRadius, params);
-    }
-    
-    // STEP 1: Start with Tyler Hobbs base polygon with variation
-    let sides = int(random(5, 9));
-    for (let i = 0; i < sides; i++) {
-        let angle = (TWO_PI / sides) * i + random(-0.4, 0.4); // More angle variation
-        let radiusVar = baseRadius * random(0.3, 1.3); // Dramatic radius variation
+// SIMPLIFIED: More reliable splotchy shape generation
+function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
+    try {
+        let vertices = [];
         
-        let x = centerX + cos(angle) * radiusVar;
-        let y = centerY + sin(angle) * radiusVar;
-        vertices.push({x: x, y: y});
-    }
-    
-    // STEP 2: Apply Tyler Hobbs deformation with enhanced chaos
-    for (let round = 0; round < params.edgeComplexity; round++) {
-        let newVertices = [];
-        
-        for (let i = 0; i < vertices.length; i++) {
-            let current = vertices[i];
-            let next = vertices[(i + 1) % vertices.length];
+        if (params.randomWalkMode) {
+            // Random Walk Mode - simplified for reliability
+            let numPoints = 20;
+            let currentX = centerX;
+            let currentY = centerY;
+            let angle = 0;
             
-            newVertices.push(current);
+            for (let i = 0; i < numPoints; i++) {
+                angle += (random() - 0.5) * params.deformStrength * 2;
+                let stepSize = baseRadius / numPoints * random(0.5, 2);
+                
+                currentX += cos(angle) * stepSize;
+                currentY += sin(angle) * stepSize;
+                
+                if (dist(currentX, currentY, centerX, centerY) < baseRadius * 1.2) {
+                    vertices.push({x: currentX, y: currentY});
+                }
+            }
             
-            // Enhanced Tyler Hobbs deformation
-            let midX = (current.x + next.x) / 2;
-            let midY = (current.y + next.y) / 2;
-            
-            let deformStrength = params.deformStrength * 100; // Increased
-            let deformX = gaussianRandom(0, deformStrength);
-            let deformY = gaussianRandom(0, deformStrength);
-            
-            newVertices.push({
-                x: midX + deformX,
-                y: midY + deformY
-            });
+            return vertices.length > 2 ? vertices : createFallbackShape(centerX, centerY, baseRadius);
         }
-        vertices = newVertices;
-    }
-    
-    // STEP 3: Add Blob Subdivision for fractal detail
-    if (random() < 0.7) { // 70% chance for subdivision
-        let subdivisionVertices = [];
-        for (let i = 0; i < vertices.length; i++) {
-            let current = vertices[i];
-            let next = vertices[(i + 1) % vertices.length];
+        
+        // HYBRID: Start with reliable base, add splotchiness step by step
+        let sides = int(random(6, 10));
+        
+        // Step 1: Create base polygon with variation
+        for (let i = 0; i < sides; i++) {
+            let angle = (TWO_PI / sides) * i + random(-0.2, 0.2);
+            let radiusVar = baseRadius * random(0.6, 1.2);
             
-            subdivisionVertices.push(current);
+            let x = centerX + cos(angle) * radiusVar;
+            let y = centerY + sin(angle) * radiusVar;
+            vertices.push({x: x, y: y});
+        }
+        
+        // Step 2: Apply controlled deformation
+        for (let round = 0; round < complexity; round++) {
+            let newVertices = [];
             
-            // Add 1-3 subdivision points per edge
-            let subdivisions = int(random(1, 4));
-            for (let s = 1; s < subdivisions; s++) {
-                let t = s / subdivisions;
-                let subX = lerp(current.x, next.x, t);
-                let subY = lerp(current.y, next.y, t);
+            for (let i = 0; i < vertices.length; i++) {
+                let current = vertices[i];
+                let next = vertices[(i + 1) % vertices.length];
                 
-                // Perpendicular displacement for organic variation
-                let perpAngle = atan2(next.y - current.y, next.x - current.x) + PI/2;
-                let displacement = (random() - 0.5) * params.deformStrength * 60;
+                newVertices.push(current);
                 
-                subdivisionVertices.push({
-                    x: subX + cos(perpAngle) * displacement,
-                    y: subY + sin(perpAngle) * displacement
+                // Add midpoint with deformation
+                let midX = (current.x + next.x) / 2;
+                let midY = (current.y + next.y) / 2;
+                
+                let deformStrength = params.deformStrength * 50; // Controlled amount
+                let deformX = (random() - 0.5) * deformStrength;
+                let deformY = (random() - 0.5) * deformStrength;
+                
+                newVertices.push({
+                    x: midX + deformX,
+                    y: midY + deformY
                 });
             }
+            vertices = newVertices;
         }
-        vertices = subdivisionVertices;
-    }
-    
-    // STEP 4: Add Drip Extensions for bleeding effect
-    if (random() < 0.8) { // 80% chance for drips
-        let numDrips = int(random(2, 6));
-        let dripVertices = [];
         
-        for (let d = 0; d < numDrips; d++) {
-            let baseIndex = int(random(vertices.length));
-            let baseVertex = vertices[baseIndex];
-            
-            // Create drip extending outward
-            let dripAngle = random(TWO_PI);
-            let dripLength = random(15, 40);
-            
-            // Create tapering drip
-            for (let step = 1; step <= 4; step++) {
-                let progress = step / 4;
-                let currentLength = dripLength * progress;
-                let width = baseRadius * 0.08 * (1 - progress * 0.7); // Tapers
+        // Step 3: Add some drips (simplified)
+        if (random() < 0.6) { // 60% chance
+            let numDrips = int(random(1, 4));
+            for (let d = 0; d < numDrips; d++) {
+                let baseIndex = int(random(vertices.length));
+                let baseVertex = vertices[baseIndex];
                 
-                let centerX = baseVertex.x + cos(dripAngle) * currentLength;
-                let centerY = baseVertex.y + sin(dripAngle) * currentLength;
+                let dripAngle = random(TWO_PI);
+                let dripLength = random(15, 30);
                 
-                // Add width with random variation
-                let perpAngle = dripAngle + PI/2;
-                let widthVar = width * random(0.5, 1.5);
+                let dripX = baseVertex.x + cos(dripAngle) * dripLength;
+                let dripY = baseVertex.y + sin(dripAngle) * dripLength;
                 
-                dripVertices.push({
-                    x: centerX + cos(perpAngle) * widthVar,
-                    y: centerY + sin(perpAngle) * widthVar
-                });
-                dripVertices.push({
-                    x: centerX - cos(perpAngle) * widthVar,
-                    y: centerY - sin(perpAngle) * widthVar
-                });
+                vertices.push({x: dripX, y: dripY});
             }
         }
         
-        // Merge drip vertices with main shape
-        vertices = vertices.concat(dripVertices);
+        return vertices.length > 2 ? vertices : createFallbackShape(centerX, centerY, baseRadius);
+        
+    } catch (error) {
+        console.error("Error creating splotchy shape:", error);
+        return createFallbackShape(centerX, centerY, baseRadius);
     }
-    
-    return vertices;
 }
 
-// Random Walk Mode - Alternative organic spreading effect
-function createRandomWalkShape(centerX, centerY, baseRadius, params) {
+// Fallback to ensure we always have a valid shape
+function createFallbackShape(centerX, centerY, radius) {
     let vertices = [];
-    let walkers = [];
+    let sides = 8;
     
-    // Start multiple walkers from center
-    let numWalkers = int(random(3, 8));
-    for (let i = 0; i < numWalkers; i++) {
-        walkers.push({
-            x: centerX + random(-10, 10),
-            y: centerY + random(-10, 10),
-            angle: random(TWO_PI),
-            energy: random(50, 150)
-        });
-    }
-    
-    // Let walkers spread organically
-    for (let step = 0; step < 100; step++) {
-        for (let walker of walkers) {
-            if (walker.energy <= 0) continue;
-            
-            // Bias toward center with some randomness
-            let toCenter = atan2(centerY - walker.y, centerX - walker.x);
-            let bias = map(dist(walker.x, walker.y, centerX, centerY), 0, baseRadius, 0.3, 0.05);
-            
-            walker.angle += (random() - 0.5) * params.deformStrength * 3;
-            walker.angle = lerp(walker.angle, toCenter + PI, bias); // Move away from center
-            
-            let stepSize = random(2, 8) * (walker.energy / 100);
-            walker.x += cos(walker.angle) * stepSize;
-            walker.y += sin(walker.angle) * stepSize;
-            walker.energy -= 1;
-            
-            // Keep within bounds and add to vertices
-            if (dist(walker.x, walker.y, centerX, centerY) < baseRadius * 1.5) {
-                vertices.push({x: walker.x, y: walker.y});
-            }
-        }
+    for (let i = 0; i < sides; i++) {
+        let angle = (TWO_PI / sides) * i;
+        let x = centerX + cos(angle) * radius;
+        let y = centerY + sin(angle) * radius;
+        vertices.push({x: x, y: y});
     }
     
     return vertices;
@@ -306,14 +250,14 @@ function updateMetadata() {
     document.getElementById('layerCountInfo').textContent = totalLayers;
 }
 
-// Create watercolor brush with hybrid splotchy characteristics
+// Create watercolor brush with reliable splotchy characteristics
 function createWatercolorBrush() {
     try {
-        let x = random(width * 0.1, width * 0.9);
-        let y = random(height * 0.1, height * 0.9);
-        let size = random(params.brushSize * 0.5, params.brushSize * 1.5);
+        let x = random(width * 0.15, width * 0.85);
+        let y = random(height * 0.15, height * 0.85);
+        let size = random(params.brushSize * 0.7, params.brushSize * 1.3);
         
-        // Pick random color with enhanced variation
+        // Pick random color
         let colorIndex = int(random(palettes[currentPalette].length));
         let baseColor = palettes[currentPalette][colorIndex];
         
@@ -322,13 +266,13 @@ function createWatercolorBrush() {
         let g = parseInt(baseColor.slice(3, 5), 16);
         let b = parseInt(baseColor.slice(5, 7), 16);
         
-        // Enhanced color variation for natural watercolor mixing
-        r = constrain(r + random(-40, 40), 0, 255);
-        g = constrain(g + random(-40, 40), 0, 255);
-        b = constrain(b + random(-40, 40), 0, 255);
+        // Add color variation
+        r = constrain(r + random(-30, 30), 0, 255);
+        g = constrain(g + random(-30, 30), 0, 255);
+        b = constrain(b + random(-30, 30), 0, 255);
         
-        // Create hybrid splotchy shape
-        let splotchyVertices = createHybridSplotchyShape(x, y, size, params);
+        // Create reliable splotchy shape
+        let splotchyVertices = createSplotchyShape(x, y, size, params.edgeComplexity);
         
         return {
             basePolygon: splotchyVertices,
@@ -345,18 +289,26 @@ function createWatercolorBrush() {
     }
 }
 
-// Draw watercolor layer with hybrid splotchiness
+// Draw watercolor layer with improved reliability
 function drawWatercolorLayer(brush) {
     try {
-        if (!brush) return;
+        if (!brush || !brush.basePolygon || brush.basePolygon.length < 3) {
+            console.warn("Invalid brush or polygon, skipping layer");
+            return;
+        }
         
-        // Create layer variation using hybrid approach
-        let layerVertices = createHybridSplotchyShape(
-            brush.x + random(-20, 20),
-            brush.y + random(-20, 20),
-            brush.size * random(0.6, 1.3),
-            params
+        // Create layer variation
+        let layerVertices = createSplotchyShape(
+            brush.x + random(-10, 10),
+            brush.y + random(-10, 10),
+            brush.size * random(0.8, 1.2),
+            Math.max(2, params.edgeComplexity - 1)
         );
+        
+        if (!layerVertices || layerVertices.length < 3) {
+            console.warn("Invalid layer vertices, using fallback");
+            layerVertices = createFallbackShape(brush.x, brush.y, brush.size);
+        }
         
         if (params.textureMasking) {
             // Create the colored shape layer
@@ -364,13 +316,11 @@ function drawWatercolorLayer(brush) {
             shapeLayer.fill(brush.r, brush.g, brush.b);
             shapeLayer.noStroke();
             
-            if (layerVertices.length > 2) {
-                shapeLayer.beginShape();
-                for (let v of layerVertices) {
-                    shapeLayer.vertex(v.x, v.y);
-                }
-                shapeLayer.endShape(CLOSE);
+            shapeLayer.beginShape();
+            for (let v of layerVertices) {
+                shapeLayer.vertex(v.x, v.y);
             }
+            shapeLayer.endShape(CLOSE);
             
             // Create texture mask for absorption effect
             let textureMask = createTextureMask(width, height, params.textureIntensity);
@@ -384,30 +334,28 @@ function drawWatercolorLayer(brush) {
             noTint();
             
         } else {
-            // Traditional rendering with hybrid splotchiness
+            // Traditional rendering
             fill(brush.r, brush.g, brush.b, params.opacity);
             noStroke();
             
-            if (layerVertices.length > 2) {
-                beginShape();
-                for (let v of layerVertices) {
-                    vertex(v.x, v.y);
-                }
-                endShape(CLOSE);
+            beginShape();
+            for (let v of layerVertices) {
+                vertex(v.x, v.y);
             }
+            endShape(CLOSE);
         }
         
     } catch (error) {
         console.error("Error drawing layer:", error);
         
-        // Simple fallback
+        // Emergency fallback - draw simple circle
         fill(brush.r, brush.g, brush.b, params.opacity);
         noStroke();
         circle(brush.x, brush.y, brush.size);
     }
 }
 
-// Async generation with hybrid splotchiness
+// Simplified async generation
 async function generateWaterscape() {
     if (isGenerating) return;
     isGenerating = true;
@@ -415,7 +363,7 @@ async function generateWaterscape() {
     let startTime = performance.now();
     
     try {
-        console.log("🎨 Generating hybrid splotchy waterscape...", params);
+        console.log("🎨 Generating reliable splotchy waterscape...", params);
         
         randomSeed(params.randomSeed);
         
@@ -423,23 +371,23 @@ async function generateWaterscape() {
         background(255);
         drawBackground();
         
-        // Create brushes with hybrid splotchy characteristics
+        // Create brushes
         let brushes = [];
         for (let i = 0; i < params.brushCount; i++) {
             let brush = createWatercolorBrush();
-            if (brush) {
+            if (brush && brush.basePolygon && brush.basePolygon.length > 2) {
                 brushes.push(brush);
             }
         }
         
-        console.log(`✨ Created ${brushes.length} hybrid splotchy brushes (Random Walk: ${params.randomWalkMode})`);
+        console.log(`✨ Created ${brushes.length} reliable splotchy brushes (Random Walk: ${params.randomWalkMode})`);
         
         if (brushes.length === 0) {
-            throw new Error("No brushes created");
+            throw new Error("No valid brushes created");
         }
         
-        // Draw layers with hybrid splotchy variation
-        console.log(`🎨 Drawing ${params.layersPerBrush} hybrid layers per brush`);
+        // Draw layers
+        console.log(`🎨 Drawing ${params.layersPerBrush} layers per brush`);
         
         for (let layer = 0; layer < params.layersPerBrush; layer++) {
             for (let brush of brushes) {
@@ -447,7 +395,7 @@ async function generateWaterscape() {
             }
             
             // Yield control for UI responsiveness
-            if (layer % 3 === 0) {
+            if (layer % 5 === 0) {
                 await new Promise(resolve => setTimeout(resolve, 1));
             }
         }
@@ -456,23 +404,35 @@ async function generateWaterscape() {
         updateMetadata();
         
         let endTime = performance.now();
-        console.log(`🎨 Hybrid splotchy generation complete in ${(endTime - startTime).toFixed(1)}ms!`);
+        console.log(`🎨 Reliable splotchy generation complete in ${(endTime - startTime).toFixed(1)}ms!`);
         
     } catch (error) {
         console.error('❌ Generation error:', error);
         
-        // Fallback with simple shapes
+        // Simple fallback
         background(255);
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 8; i++) {
             let colorIndex = int(random(palettes[currentPalette].length));
             let baseColor = palettes[currentPalette][colorIndex];
             let r = parseInt(baseColor.slice(1, 3), 16);
             let g = parseInt(baseColor.slice(3, 5), 16);
             let b = parseInt(baseColor.slice(5, 7), 16);
             
-            fill(r, g, b, 30);
+            fill(r, g, b, 40);
             noStroke();
-            circle(random(width), random(height), random(50, 100));
+            
+            let fallbackVertices = createSplotchyShape(
+                random(width * 0.2, width * 0.8),
+                random(height * 0.2, height * 0.8),
+                random(50, 100),
+                3
+            );
+            
+            beginShape();
+            for (let v of fallbackVertices) {
+                vertex(v.x, v.y);
+            }
+            endShape(CLOSE);
         }
         
         updateMetadata();
