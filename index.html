@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waterscape - Generative Watercolor Art</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            width: 350px;
+            height: fit-content;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .control-item {
+            margin-bottom: 12px;
+        }
+
+        .control-item label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .control-item input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .control-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .control-item input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .control-item select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .control-item select:focus {
+            border-color: #667eea;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 5px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button.secondary {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .button.secondary:hover {
+            box-shadow: 0 6px 20px rgba(56, 239, 125, 0.4);
+        }
+
+        .canvas-wrapper {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            background: white;
+        }
+
+        .value-display {
+            display: inline-block;
+            color: #667eea;
+            font-weight: 600;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .color-swatch {
+            width: 100%;
+            height: 30px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.05);
+            border-color: #667eea;
+        }
+
+        .color-swatch.active {
+            border-color: #667eea;
+            border-width: 3px;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 28px;
+            font-weight: 300;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h3 style="text-align: center; margin-bottom: 20px; color: #667eea;">Waterscape Controls</h3>
+        
+        <div class="control-group">
+            <h3>Color Palette</h3>
+            <div class="color-palette" id="colorPalette"></div>
+            <select id="paletteSelect">
+                <option value="vibrant">Vibrant</option>
+                <option value="pastel">Pastel</option>
+                <option value="earth">Earth Tones</option>
+                <option value="ocean">Ocean</option>
+                <option value="sunset">Sunset</option>
+                <option value="forest">Forest</option>
+                <option value="monochrome">Monochrome</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <h3>Generation Parameters</h3>
+            
+            <div class="control-item">
+                <label for="brushCount">Brush Count: <span class="value-display" id="brushCountValue">25</span></label>
+                <input type="range" id="brushCount" min="5" max="50" value="25">
+            </div>
+
+            <div class="control-item">
+                <label for="layersPerBrush">Layers per Brush: <span class="value-display" id="layersPerBrushValue">8</span></label>
+                <input type="range" id="layersPerBrush" min="3" max="15" value="8">
+            </div>
+
+            <div class="control-item">
+                <label for="brushSize">Brush Size: <span class="value-display" id="brushSizeValue">80</span></label>
+                <input type="range" id="brushSize" min="20" max="150" value="80">
+            </div>
+
+            <div class="control-item">
+                <label for="deformStrength">Deformation: <span class="value-display" id="deformStrengthValue">0.3</span></label>
+                <input type="range" id="deformStrength" min="0.1" max="0.8" step="0.1" value="0.3">
+            </div>
+
+            <div class="control-item">
+                <label for="opacity">Opacity: <span class="value-display" id="opacityValue">25</span></label>
+                <input type="range" id="opacity" min="5" max="50" value="25">
+            </div>
+
+            <div class="control-item">
+                <label for="randomSeed">Random Seed: <span class="value-display" id="randomSeedValue">42</span></label>
+                <input type="range" id="randomSeed" min="1" max="1000" value="42">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Background</h3>
+            <select id="backgroundType">
+                <option value="white">White</option>
+                <option value="paper">Paper Texture</option>
+                <option value="gradient">Gradient</option>
+            </select>
+        </div>
+
+        <div style="text-align: center;">
+            <button class="button" onclick="generateNew()">Generate New</button>
+            <button class="button secondary" onclick="savePNG()">Save PNG</button>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <h1>Waterscape</h1>
+        <div class="canvas-wrapper" id="canvasWrapper"></div>
+    </div>
+
+    <script>
+        // Color palettes
+        const palettes = {
+            vibrant: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'],
+            pastel: ['#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#FFDFBA', '#E0BBE4', '#957DAD', '#D291BC'],
+            earth: ['#8B4513', '#D2691E', '#CD853F', '#DEB887', '#F4A460', '#D2B48C', '#BC8F8F', '#A0522D'],
+            ocean: ['#006994', '#4A90A4', '#83C5BE', '#7FCDCD', '#7FB3D3', '#5D737E', '#3E8E7E', '#1F4E79'],
+            sunset: ['#FF4B2B', '#FF416C', '#FFA07A', '#FFB347', '#FFD700', '#FF6347', '#FF69B4', '#FF1493'],
+            forest: ['#228B22', '#32CD32', '#7CFC00', '#9ACD32', '#90EE90', '#98FB98', '#00FF7F', '#3CB371'],
+            monochrome: ['#2C3E50', '#34495E', '#7F8C8D', '#95A5A6', '#BDC3C7', '#D5DBDB', '#85929E', '#566573']
+        };
+
+        let currentPalette = 'vibrant';
+        let params = {
+            brushCount: 25,
+            layersPerBrush: 8,
+            brushSize: 80,
+            deformStrength: 0.3,
+            opacity: 25,
+            randomSeed: 42,
+            backgroundType: 'white'
+        };
+
+        // Initialize color palette display
+        function updateColorPalette() {
+            const paletteDiv = document.getElementById('colorPalette');
+            paletteDiv.innerHTML = '';
+            
+            palettes[currentPalette].forEach((color, index) => {
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.style.backgroundColor = color;
+                swatch.title = color;
+                paletteDiv.appendChild(swatch);
+            });
+        }
+
+        // Setup control listeners
+        function setupControls() {
+            // Palette selector
+            document.getElementById('paletteSelect').addEventListener('change', (e) => {
+                currentPalette = e.target.value;
+                updateColorPalette();
+                generateNew();
+            });
+
+            // Parameter controls
+            Object.keys(params).forEach(param => {
+                const control = document.getElementById(param);
+                if (control) {
+                    control.addEventListener('input', (e) => {
+                        params[param] = param === 'deformStrength' ? 
+                            parseFloat(e.target.value) : 
+                            parseInt(e.target.value);
+                        
+                        document.getElementById(param + 'Value').textContent = 
+                            param === 'deformStrength' ? 
+                            params[param].toFixed(1) : 
+                            params[param];
+                        
+                        generateNew();
+                    });
+                }
+            });
+
+            // Background type
+            document.getElementById('backgroundType').addEventListener('change', (e) => {
+                params.backgroundType = e.target.value;
+                generateNew();
+            });
+        }
+
+        // P5.js sketch
+        let canvas;
+        
+        function setup() {
+            canvas = createCanvas(800, 600);
+            canvas.parent('canvasWrapper');
+            colorMode(RGB, 255, 255, 255, 100);
+            setupControls();
+            updateColorPalette();
+            generateWaterscape();
+        }
+
+        function generateWaterscape() {
+            randomSeed(params.randomSeed);
+            
+            // Background
+            drawBackground();
+            
+            // Generate brushes
+            let brushes = [];
+            for (let i = 0; i < params.brushCount; i++) {
+                let brush = createBrush();
+                brushes.push(brush);
+            }
+            
+            // Draw all layers interleaved for proper blending
+            for (let layer = 0; layer < params.layersPerBrush; layer++) {
+                for (let brush of brushes) {
+                    if (layer < brush.layers.length) {
+                        drawPolygon(brush.layers[layer], brush.color);
+                    }
+                }
+            }
+        }
+
+        function drawBackground() {
+            switch (params.backgroundType) {
+                case 'white':
+                    background(255);
+                    break;
+                case 'paper':
+                    background(252, 248, 240);
+                    drawPaperTexture();
+                    break;
+                case 'gradient':
+                    drawGradientBackground();
+                    break;
+            }
+        }
+
+        function drawPaperTexture() {
+            for (let i = 0; i < 1000; i++) {
+                stroke(240, 235, 220, random(10, 30));
+                strokeWeight(random(0.5, 2));
+                point(random(width), random(height));
+            }
+        }
+
+        function drawGradientBackground() {
+            for (let y = 0; y < height; y++) {
+                let alpha = map(y, 0, height, 0, 1);
+                let c = lerpColor(color(255, 255, 255), color(240, 248, 255), alpha);
+                stroke(c);
+                line(0, y, width, y);
+            }
+        }
+
+        function createBrush() {
+            let x = random(width * 0.1, width * 0.9);
+            let y = random(height * 0.1, height * 0.9);
+            let size = random(params.brushSize * 0.5, params.brushSize * 1.5);
+            let sides = int(random(6, 12));
+            
+            // Pick random color from current palette
+            let colorIndex = int(random(palettes[currentPalette].length));
+            let baseColor = color(palettes[currentPalette][colorIndex]);
+            
+            // Add some color variation
+            let r = red(baseColor) + random(-30, 30);
+            let g = green(baseColor) + random(-30, 30);
+            let b = blue(baseColor) + random(-30, 30);
+            
+            r = constrain(r, 0, 255);
+            g = constrain(g, 0, 255);
+            b = constrain(b, 0, 255);
+            
+            let brushColor = color(r, g, b, params.opacity);
+            
+            let layers = [];
+            let basePolygon = createRegularPolygon(x, y, size, sides);
+            basePolygon = deformPolygon(basePolygon, params.deformStrength);
+            
+            for (let i = 0; i < params.layersPerBrush; i++) {
+                let layerDeform = params.deformStrength * (0.5 + random(0.5));
+                let layer = deformPolygon([...basePolygon], layerDeform);
+                layers.push(layer);
+            }
+            
+            return {
+                layers: layers,
+                color: brushColor
+            };
+        }
+
+        function createRegularPolygon(x, y, radius, sides) {
+            let vertices = [];
+            for (let i = 0; i < sides; i++) {
+                let angle = (TWO_PI / sides) * i;
+                let vx = x + cos(angle) * radius;
+                let vy = y + sin(angle) * radius;
+                vertices.push({x: vx, y: vy});
+            }
+            return vertices;
+        }
+
+        function deformPolygon(vertices, strength) {
+            return vertices.map(vertex => {
+                let deformX = random(-strength, strength) * 50;
+                let deformY = random(-strength, strength) * 50;
+                return {
+                    x: vertex.x + deformX,
+                    y: vertex.y + deformY
+                };
+            });
+        }
+
+        function drawPolygon(vertices, fillColor) {
+            fill(fillColor);
+            noStroke();
+            
+            beginShape();
+            for (let v of vertices) {
+                vertex(v.x, v.y);
+            }
+            endShape(CLOSE);
+        }
+
+        function generateNew() {
+            generateWaterscape();
+        }
+
+        function savePNG() {
+            saveCanvas(canvas, `waterscape_${Date.now()}`, 'png');
+        }
+
+        // Auto-generate on load
+        function draw() {
+            // Static generation - no continuous drawing needed
+        }
+    </script>
+</body>
+</html>
