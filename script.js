@@ -49,40 +49,46 @@ function gaussianRandom(mean = 0, stdev = 1) {
     return z * stdev + mean;
 }
 
-// ALTERNATIVE TEXTURE APPROACH: Direct shape modification instead of masking
-function applyTextureToShape(vertices, intensity, density) {
+// ENHANCED: Organic texture approach with better blending
+function applyTextureToShape(vertices, intensity, density, brushColor) {
     if (!params.textureMasking) return vertices;
     
     try {
         let texturedVertices = [];
         
-        // Apply texture by modifying vertices and adding texture points
+        // Apply texture by modifying vertices and adding organic variations
         for (let i = 0; i < vertices.length; i++) {
             let current = vertices[i];
             let next = vertices[(i + 1) % vertices.length];
             
             texturedVertices.push(current);
             
-            // Add texture variations along edges
-            let numTexturePoints = int(random(1, density / 200)); // Reduced density
+            // Add organic texture variations along edges
+            let edgeLength = dist(current.x, current.y, next.x, next.y);
+            let numTexturePoints = int(map(edgeLength, 10, 100, 1, density / 300));
+            
             for (let t = 1; t < numTexturePoints; t++) {
                 let progress = t / numTexturePoints;
                 let edgeX = lerp(current.x, next.x, progress);
                 let edgeY = lerp(current.y, next.y, progress);
                 
-                // Add perpendicular texture displacement
+                // Add organic, flowing texture displacement
                 let edgeAngle = atan2(next.y - current.y, next.x - current.x);
                 let perpAngle = edgeAngle + PI/2;
-                let displacement = (random() - 0.5) * intensity * 20;
                 
-                // Random chance to create texture "holes" by pushing inward
-                if (random() < intensity * 0.3) {
-                    displacement *= -1; // Inward displacement
+                // Use noise for more organic texture variation
+                let noiseVal = noise(edgeX * 0.01, edgeY * 0.01, frameCount * 0.001);
+                let displacement = (noiseVal - 0.5) * intensity * 30;
+                
+                // Create flowing, organic absorption patterns
+                let flowDirection = 1;
+                if (random() < intensity * 0.4) {
+                    flowDirection = -1; // Some inward flow for absorption
                 }
                 
                 texturedVertices.push({
-                    x: edgeX + cos(perpAngle) * displacement,
-                    y: edgeY + sin(perpAngle) * displacement
+                    x: edgeX + cos(perpAngle) * displacement * flowDirection,
+                    y: edgeY + sin(perpAngle) * displacement * flowDirection
                 });
             }
         }
@@ -91,30 +97,31 @@ function applyTextureToShape(vertices, intensity, density) {
         
     } catch (error) {
         console.error("Texture application error:", error);
-        return vertices; // Return original if texture fails
+        return vertices;
     }
 }
 
-// SIMPLIFIED: More reliable splotchy shape generation
+// ENHANCED: More organic splotchy shape generation
 function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
     try {
         let vertices = [];
         
         if (params.randomWalkMode) {
-            // Random Walk Mode - simplified for reliability
-            let numPoints = 30;
+            // Random Walk Mode - more organic flow
+            let numPoints = 40;
             let currentX = centerX;
             let currentY = centerY;
             let angle = 0;
             
             for (let i = 0; i < numPoints; i++) {
-                angle += (random() - 0.5) * params.deformStrength * 2;
-                let stepSize = baseRadius / numPoints * random(0.5, 2);
+                // More flowing, less jerky movement
+                angle += (noise(i * 0.1, frameCount * 0.001) - 0.5) * params.deformStrength * 1.5;
+                let stepSize = baseRadius / numPoints * (0.8 + noise(i * 0.05) * 0.4);
                 
                 currentX += cos(angle) * stepSize;
                 currentY += sin(angle) * stepSize;
                 
-                if (dist(currentX, currentY, centerX, centerY) < baseRadius * 1.2) {
+                if (dist(currentX, currentY, centerX, centerY) < baseRadius * 1.3) {
                     vertices.push({x: currentX, y: currentY});
                 }
             }
@@ -122,20 +129,27 @@ function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
             return vertices.length > 2 ? vertices : createFallbackShape(centerX, centerY, baseRadius);
         }
         
-        // HYBRID: Start with reliable base, add splotchiness step by step
-        let sides = int(random(6, 10));
+        // ORGANIC HYBRID: More flowing, less geometric
+        let sides = int(random(7, 12)); // More sides for smoother flow
         
-        // Step 1: Create base polygon with variation
+        // Step 1: Create organic base with flowing variation
         for (let i = 0; i < sides; i++) {
-            let angle = (TWO_PI / sides) * i + random(-0.2, 0.2);
-            let radiusVar = baseRadius * random(0.6, 1.2);
+            let angle = (TWO_PI / sides) * i;
+            
+            // Add organic angle variation using noise
+            let angleNoise = noise(i * 0.5, centerX * 0.001, centerY * 0.001);
+            angle += (angleNoise - 0.5) * 0.6;
+            
+            // Organic radius variation
+            let radiusNoise = noise(i * 0.3 + 100, centerX * 0.001, centerY * 0.001);
+            let radiusVar = baseRadius * (0.5 + radiusNoise * 0.8);
             
             let x = centerX + cos(angle) * radiusVar;
             let y = centerY + sin(angle) * radiusVar;
             vertices.push({x: x, y: y});
         }
         
-        // Step 2: Apply controlled deformation
+        // Step 2: Apply flowing deformation
         for (let round = 0; round < complexity; round++) {
             let newVertices = [];
             
@@ -145,13 +159,17 @@ function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
                 
                 newVertices.push(current);
                 
-                // Add midpoint with deformation
+                // Organic midpoint with flowing deformation
                 let midX = (current.x + next.x) / 2;
                 let midY = (current.y + next.y) / 2;
                 
-                let deformStrength = params.deformStrength * 50; // Controlled amount
-                let deformX = (random() - 0.5) * deformStrength;
-                let deformY = (random() - 0.5) * deformStrength;
+                // Use noise for more organic, flowing deformation
+                let noiseX = noise(midX * 0.005, midY * 0.005, round * 0.1);
+                let noiseY = noise(midX * 0.005 + 1000, midY * 0.005, round * 0.1);
+                
+                let deformStrength = params.deformStrength * 40;
+                let deformX = (noiseX - 0.5) * deformStrength;
+                let deformY = (noiseY - 0.5) * deformStrength;
                 
                 newVertices.push({
                     x: midX + deformX,
@@ -161,24 +179,35 @@ function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
             vertices = newVertices;
         }
         
-        // Step 3: Add some drips (simplified)
-        if (random() < 0.6) { // 60% chance
-            let numDrips = int(random(1, 4));
-            for (let d = 0; d < numDrips; d++) {
+        // Step 3: Add organic flowing extensions (not rigid drips)
+        if (random() < 0.7) {
+            let numFlows = int(random(2, 5));
+            for (let f = 0; f < numFlows; f++) {
                 let baseIndex = int(random(vertices.length));
                 let baseVertex = vertices[baseIndex];
                 
-                let dripAngle = random(TWO_PI);
-                let dripLength = random(15, 30);
+                // Create flowing extensions rather than geometric drips
+                let flowAngle = random(TWO_PI);
+                let flowSteps = int(random(3, 8));
+                let currentX = baseVertex.x;
+                let currentY = baseVertex.y;
                 
-                let dripX = baseVertex.x + cos(dripAngle) * dripLength;
-                let dripY = baseVertex.y + sin(dripAngle) * dripLength;
-                
-                vertices.push({x: dripX, y: dripY});
+                for (let step = 1; step <= flowSteps; step++) {
+                    let stepProgress = step / flowSteps;
+                    
+                    // Gradually curve the flow
+                    flowAngle += (random() - 0.5) * 0.3;
+                    let stepLength = (1 - stepProgress) * random(8, 15);
+                    
+                    currentX += cos(flowAngle) * stepLength;
+                    currentY += sin(flowAngle) * stepLength;
+                    
+                    vertices.push({x: currentX, y: currentY});
+                }
             }
         }
         
-        // Step 4: Apply texture modification directly to shape
+        // Step 4: Apply organic texture modification
         vertices = applyTextureToShape(vertices, params.textureIntensity, params.textureDensity);
         
         return vertices.length > 2 ? vertices : createFallbackShape(centerX, centerY, baseRadius);
@@ -192,7 +221,7 @@ function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
 // Fallback to ensure we always have a valid shape
 function createFallbackShape(centerX, centerY, radius) {
     let vertices = [];
-    let sides = 8;
+    let sides = 12; // More sides for smoother fallback
     
     for (let i = 0; i < sides; i++) {
         let angle = (TWO_PI / sides) * i;
@@ -278,7 +307,7 @@ function updateMetadata() {
     document.getElementById('layerCountInfo').textContent = totalLayers;
 }
 
-// Create watercolor brush with reliable splotchy characteristics
+// Create watercolor brush with organic characteristics
 function createWatercolorBrush() {
     try {
         let x = random(width * 0.15, width * 0.85);
@@ -294,12 +323,12 @@ function createWatercolorBrush() {
         let g = parseInt(baseColor.slice(3, 5), 16);
         let b = parseInt(baseColor.slice(5, 7), 16);
         
-        // Add color variation
-        r = constrain(r + random(-30, 30), 0, 255);
-        g = constrain(g + random(-30, 30), 0, 255);
-        b = constrain(b + random(-30, 30), 0, 255);
+        // Add organic color variation
+        r = constrain(r + random(-25, 25), 0, 255);
+        g = constrain(g + random(-25, 25), 0, 255);
+        b = constrain(b + random(-25, 25), 0, 255);
         
-        // Create reliable splotchy shape
+        // Create organic splotchy shape
         let splotchyVertices = createSplotchyShape(x, y, size, params.edgeComplexity);
         
         return {
@@ -317,29 +346,41 @@ function createWatercolorBrush() {
     }
 }
 
-// Draw watercolor layer with WORKING texture alternative
-function drawWatercolorLayer(brush) {
+// ENHANCED: Organic layer drawing with better blending
+function drawWatercolorLayer(brush, layerIndex) {
     try {
         if (!brush || !brush.basePolygon || brush.basePolygon.length < 3) {
-            console.warn("Invalid brush or polygon, skipping layer");
             return;
         }
         
-        // Create layer variation with texture built-in
+        // Create organic layer variation
+        let variation = map(layerIndex, 0, params.layersPerBrush, 1.0, 0.6); // Smaller variation in later layers
+        let positionJitter = variation * 8; // Reduced jitter for later layers
+        
         let layerVertices = createSplotchyShape(
-            brush.x + random(-10, 10),
-            brush.y + random(-10, 10),
-            brush.size * random(0.8, 1.2),
+            brush.x + random(-positionJitter, positionJitter),
+            brush.y + random(-positionJitter, positionJitter),
+            brush.size * random(0.7 + variation * 0.2, 1.1 + variation * 0.2),
             Math.max(2, params.edgeComplexity - 1)
         );
         
         if (!layerVertices || layerVertices.length < 3) {
-            console.warn("Invalid layer vertices, using fallback");
             layerVertices = createFallbackShape(brush.x, brush.y, brush.size);
         }
         
-        // SIMPLIFIED: Direct drawing without problematic mask() function
-        fill(brush.r, brush.g, brush.b, params.opacity);
+        // ORGANIC BLENDING: Use multiply blend mode for authentic watercolor mixing
+        blendMode(MULTIPLY);
+        
+        // Organic opacity variation based on layer
+        let layerOpacity = params.opacity;
+        if (params.textureMasking) {
+            // Vary opacity for more organic buildup
+            layerOpacity *= random(0.6, 1.2);
+            // Earlier layers slightly more opaque for better color buildup
+            layerOpacity *= map(layerIndex, 0, params.layersPerBrush, 1.2, 0.8);
+        }
+        
+        fill(brush.r, brush.g, brush.b, layerOpacity);
         noStroke();
         
         beginShape();
@@ -348,31 +389,36 @@ function drawWatercolorLayer(brush) {
         }
         endShape(CLOSE);
         
-        // Additional texture effect: Add some small transparent circles for paper texture
-        if (params.textureMasking && random() < 0.3) {
-            let numDots = int(random(3, 8));
+        // ORGANIC TEXTURE: Flowing, subtle additional texture
+        if (params.textureMasking && random() < 0.2) { // Reduced frequency
+            let numDots = int(random(2, 5)); // Fewer dots
             for (let i = 0; i < numDots; i++) {
-                let dotX = brush.x + random(-brush.size, brush.size);
-                let dotY = brush.y + random(-brush.size, brush.size);
-                let dotSize = random(2, 6);
-                let dotOpacity = random(params.opacity * 0.5, params.opacity * 1.5);
+                let angle = random(TWO_PI);
+                let distance = random(brush.size * 0.3, brush.size * 0.8);
+                let dotX = brush.x + cos(angle) * distance;
+                let dotY = brush.y + sin(angle) * distance;
+                let dotSize = random(1, 4); // Smaller dots
+                let dotOpacity = layerOpacity * random(0.3, 0.8); // More subtle
                 
                 fill(brush.r, brush.g, brush.b, dotOpacity);
                 circle(dotX, dotY, dotSize);
             }
         }
         
+        // Reset blend mode
+        blendMode(BLEND);
+        
     } catch (error) {
         console.error("Error drawing layer:", error);
         
-        // Emergency fallback - draw simple circle
+        // Simple fallback
         fill(brush.r, brush.g, brush.b, params.opacity);
         noStroke();
         circle(brush.x, brush.y, brush.size);
     }
 }
 
-// Simplified async generation - NO PROBLEMATIC MASKING
+// Enhanced async generation with organic flow
 async function generateWaterscape() {
     if (isGenerating) return;
     isGenerating = true;
@@ -380,7 +426,7 @@ async function generateWaterscape() {
     let startTime = performance.now();
     
     try {
-        console.log("🎨 Generating waterscape WITHOUT mask() function...", params);
+        console.log("🎨 Generating organic waterscape...", params);
         
         randomSeed(params.randomSeed);
         
@@ -397,22 +443,22 @@ async function generateWaterscape() {
             }
         }
         
-        console.log(`✨ Created ${brushes.length} reliable brushes (Random Walk: ${params.randomWalkMode})`);
+        console.log(`✨ Created ${brushes.length} organic brushes (Random Walk: ${params.randomWalkMode})`);
         
         if (brushes.length === 0) {
             throw new Error("No valid brushes created");
         }
         
-        // Draw layers with alternative texture method
-        console.log(`🎨 Drawing ${params.layersPerBrush} layers per brush`);
+        // Draw layers with organic blending
+        console.log(`🎨 Drawing ${params.layersPerBrush} organic layers per brush`);
         
         for (let layer = 0; layer < params.layersPerBrush; layer++) {
             for (let brush of brushes) {
-                drawWatercolorLayer(brush);
+                drawWatercolorLayer(brush, layer);
             }
             
             // Yield control for UI responsiveness
-            if (layer % 5 === 0) {
+            if (layer % 4 === 0) {
                 await new Promise(resolve => setTimeout(resolve, 1));
             }
         }
@@ -421,12 +467,12 @@ async function generateWaterscape() {
         updateMetadata();
         
         let endTime = performance.now();
-        console.log(`🎨 Alternative texture generation complete in ${(endTime - startTime).toFixed(1)}ms!`);
+        console.log(`🎨 Organic generation complete in ${(endTime - startTime).toFixed(1)}ms!`);
         
     } catch (error) {
         console.error('❌ Generation error:', error);
         
-        // Simple fallback
+        // Organic fallback
         background(255);
         for (let i = 0; i < 8; i++) {
             let colorIndex = int(random(palettes[currentPalette].length));
@@ -435,7 +481,7 @@ async function generateWaterscape() {
             let g = parseInt(baseColor.slice(3, 5), 16);
             let b = parseInt(baseColor.slice(5, 7), 16);
             
-            fill(r, g, b, 40);
+            fill(r, g, b, 25);
             noStroke();
             
             let fallbackVertices = createSplotchyShape(
