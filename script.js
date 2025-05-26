@@ -1,4 +1,4 @@
-console.log("🎨 Waterscape Studio v2.5 - Clean Chaos Seepage");
+console.log("🎨 Waterscape Studio v2.6 - Restored FX Visibility");
 
 // Color palettes
 let palettes = {
@@ -48,11 +48,6 @@ let canvas;
 let isGenerating = false;
 let activeBrushes = [];
 
-// Simple noise function
-function simpleNoise(x, y, scale = 1) {
-    return noise(x * scale * 0.01, y * scale * 0.01);
-}
-
 // Advanced watercolor effects
 function createColorBleedEffect(centerX, centerY, baseColor, nearbyBrushes) {
     if (!params.colorBleeding || nearbyBrushes.length === 0) {
@@ -81,16 +76,15 @@ function createColorBleedEffect(centerX, centerY, baseColor, nearbyBrushes) {
         }
     }
     
-    // Apply light chaos seepage to color variation
-    let colorVariation = params.chaosSeepageIntensity * 10;
-    blendedColor.r = constrain(blendedColor.r + random(-colorVariation, colorVariation), 0, 255);
-    blendedColor.g = constrain(blendedColor.g + random(-colorVariation, colorVariation), 0, 255);
-    blendedColor.b = constrain(blendedColor.b + random(-colorVariation, colorVariation), 0, 255);
+    // Apply chaos seepage color variation
+    let chaosVariation = params.chaosSeepageIntensity * 12;
+    blendedColor.r = constrain(blendedColor.r + random(-chaosVariation, chaosVariation), 0, 255);
+    blendedColor.g = constrain(blendedColor.g + random(-chaosVariation, chaosVariation), 0, 255);
+    blendedColor.b = constrain(blendedColor.b + random(-chaosVariation, chaosVariation), 0, 255);
     
     return blendedColor;
 }
 
-// Simple wet-on-wet effect
 function createWetOnWetLayer(brush, layerIndex, nearbyBrushes) {
     if (!params.wetOnWet) return null;
     
@@ -100,14 +94,14 @@ function createWetOnWetLayer(brush, layerIndex, nearbyBrushes) {
         let wetDistance = params.wetBlendRadius * params.bleedingIntensity;
         
         if (distance < wetDistance && distance > 0) {
-            let blendSteps = 2 + Math.floor(params.chaosSeepageIntensity * 2);
+            let blendSteps = 3 + Math.floor(params.chaosSeepageIntensity * 3);
             for (let step = 1; step <= blendSteps; step++) {
                 let t = step / (blendSteps + 1);
                 let blendX = lerp(brush.x, nearby.x, t);
                 let blendY = lerp(brush.y, nearby.y, t);
                 
-                // Add subtle chaos displacement
-                let chaosOffset = params.chaosSeepageIntensity * 15;
+                // Add chaos displacement
+                let chaosOffset = params.chaosSeepageIntensity * 20;
                 blendX += random(-chaosOffset, chaosOffset);
                 blendY += random(-chaosOffset, chaosOffset);
                 
@@ -153,7 +147,7 @@ function calculateDepthColor(baseColor, x, y, depth = 0) {
     return adjustedColor;
 }
 
-// Enhanced shape generation with controlled chaos
+// Shape generation with clear parameter effects
 function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
     try {
         let vertices = [];
@@ -161,25 +155,25 @@ function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
         
         for (let i = 0; i < sides; i++) {
             let angle = (TWO_PI / sides) * i;
-            let angleNoise = simpleNoise(i * 0.5, centerX * 0.001, centerY * 0.001);
+            let angleNoise = noise(i * 0.5, centerX * 0.001, centerY * 0.001);
             
-            // Apply chaos seepage to angle variation
-            let angleVariation = (angleNoise - 0.5) * 0.6;
-            angleVariation *= (1 + params.chaosSeepageIntensity * 0.5);
+            // Clear angle variation based on edge complexity and chaos
+            let angleVariation = (angleNoise - 0.5) * (0.4 + params.edgeComplexity * 0.2);
+            angleVariation *= (1 + params.chaosSeepageIntensity * 0.8);
             angle += angleVariation;
             
-            let radiusNoise = simpleNoise(i * 0.3 + 100, centerX * 0.001, centerY * 0.001);
-            let radiusVar = baseRadius * (0.5 + radiusNoise * 0.8);
+            let radiusNoise = noise(i * 0.3 + 100, centerX * 0.001, centerY * 0.001);
+            let radiusVar = baseRadius * (0.4 + radiusNoise * (0.6 + params.edgeComplexity * 0.2));
             
-            // Apply chaos seepage to radius variation
-            radiusVar *= (1 + params.chaosSeepageIntensity * 0.3 * (radiusNoise - 0.5));
+            // Apply chaos to radius
+            radiusVar *= (0.8 + params.chaosSeepageIntensity * 0.4 * radiusNoise);
             
             let x = centerX + cos(angle) * radiusVar;
             let y = centerY + sin(angle) * radiusVar;
             vertices.push({x: x, y: y});
         }
         
-        // Apply deformation rounds based on complexity
+        // Apply deformation rounds - MORE VISIBLE EFFECT
         for (let round = 0; round < complexity; round++) {
             let newVertices = [];
             
@@ -192,12 +186,13 @@ function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
                 let midX = (current.x + next.x) / 2;
                 let midY = (current.y + next.y) / 2;
                 
-                let noiseX = simpleNoise(midX * 0.005, midY * 0.005, round * 0.1);
-                let noiseY = simpleNoise(midX * 0.005 + 1000, midY * 0.005, round * 0.1);
+                let noiseX = noise(midX * 0.005, midY * 0.005, round * 0.1);
+                let noiseY = noise(midX * 0.005 + 1000, midY * 0.005, round * 0.1);
                 
-                let deformStrength = params.deformStrength * 40;
-                // Scale deformation by chaos seepage
-                deformStrength *= (1 + params.chaosSeepageIntensity * 0.5);
+                // MUCH MORE VISIBLE deformation strength
+                let baseDeformStrength = params.deformStrength * 80; // Increased from 40
+                let chaosMultiplier = 1 + params.chaosSeepageIntensity * 1.0;
+                let deformStrength = baseDeformStrength * chaosMultiplier;
                 
                 let deformX = (noiseX - 0.5) * deformStrength;
                 let deformY = (noiseY - 0.5) * deformStrength;
@@ -235,10 +230,14 @@ function createFallbackShape(centerX, centerY, radius) {
 // Brush creation
 function createWatercolorBrush(depthLayer = 0) {
     try {
-        // Use original brush positioning with slight expansion for chaos seepage
-        let expansion = params.chaosSeepageIntensity * 0.2;
-        let x = random(width * (0.15 - expansion), width * (0.85 + expansion));
-        let y = random(height * (0.15 - expansion), height * (0.85 + expansion));
+        let x = random(width * 0.15, width * 0.85);
+        let y = random(height * 0.15, height * 0.85);
+        
+        // Apply chaos seepage to positioning
+        let expansion = params.chaosSeepageIntensity * 0.15;
+        x = random(width * (0.15 - expansion), width * (0.85 + expansion));
+        y = random(height * (0.15 - expansion), height * (0.85 + expansion));
+        
         let size = random(params.brushSize * 0.7, params.brushSize * 1.3);
         
         let colorIndex = int(random(palettes[currentPalette].length));
@@ -250,8 +249,8 @@ function createWatercolorBrush(depthLayer = 0) {
         
         let depthColor = calculateDepthColor({r, g, b}, x, y, depthLayer);
         
-        // Apply subtle chaos color variation
-        let colorVar = params.chaosSeepageIntensity * 15;
+        // Apply chaos color variation
+        let colorVar = params.chaosSeepageIntensity * 20;
         depthColor.r = constrain(depthColor.r + random(-colorVar, colorVar), 0, 255);
         depthColor.g = constrain(depthColor.g + random(-colorVar, colorVar), 0, 255);
         depthColor.b = constrain(depthColor.b + random(-colorVar, colorVar), 0, 255);
@@ -290,7 +289,7 @@ function findNearbyBrushes(brush, allBrushes, maxDistance) {
     return nearby;
 }
 
-// Drawing with controlled chaos seepage
+// Drawing with CLEAR parameter effects
 function drawWatercolorLayer(brush, layerIndex, allBrushes) {
     try {
         if (!brush || !brush.basePolygon || brush.basePolygon.length < 3) {
@@ -303,9 +302,10 @@ function drawWatercolorLayer(brush, layerIndex, allBrushes) {
         let bleedColor = createColorBleedEffect(brush.x, brush.y, brush.originalColor, nearbyBrushes);
         
         let variation = map(layerIndex, 0, params.layersPerBrush, 1.0, 0.6);
-        let positionJitter = variation * 8;
-        // Add controlled chaos jitter
-        positionJitter *= (1 + params.chaosSeepageIntensity * 0.5);
+        
+        // CLEAR position jitter effect
+        let positionJitter = variation * 10;
+        positionJitter *= (1 + params.chaosSeepageIntensity * 1.0);
         
         let layerVertices = createSplotchyShape(
             brush.x + random(-positionJitter, positionJitter),
@@ -320,9 +320,10 @@ function drawWatercolorLayer(brush, layerIndex, allBrushes) {
         
         blendMode(MULTIPLY);
         
+        // CLEAR opacity effect
         let layerOpacity = params.opacity;
         if (params.textureMasking) {
-            layerOpacity *= random(0.6, 1.2);
+            layerOpacity *= random(0.6, 1.2) * params.textureIntensity;
             layerOpacity *= map(layerIndex, 0, params.layersPerBrush, 1.2, 0.8);
         }
         
@@ -355,21 +356,27 @@ function drawWatercolorLayer(brush, layerIndex, allBrushes) {
             }
         }
         
-        // Subtle texture effects
-        if (params.textureMasking && random() < 0.15) {
-            let numDots = int(random(1, 3));
-            for (let i = 0; i < numDots; i++) {
-                let angle = random(TWO_PI);
-                let distance = random(brush.size * 0.3, brush.size * 0.8);
-                // Add chaos displacement to texture
-                distance *= (1 + params.chaosSeepageIntensity * 0.3);
-                let dotX = brush.x + cos(angle) * distance;
-                let dotY = brush.y + sin(angle) * distance;
-                let dotSize = random(1, 3);
-                let dotOpacity = layerOpacity * random(0.2, 0.6);
-                
-                fill(bleedColor.r, bleedColor.g, bleedColor.b, dotOpacity);
-                circle(dotX, dotY, dotSize);
+        // CLEAR texture effects
+        if (params.textureMasking) {
+            let textureChance = 0.2 * params.textureIntensity;
+            let numDots = Math.floor(params.textureDensity / 400); // Use texture density parameter
+            
+            if (random() < textureChance) {
+                for (let i = 0; i < numDots; i++) {
+                    let angle = random(TWO_PI);
+                    let distance = random(brush.size * 0.2, brush.size * 1.0);
+                    
+                    // Apply chaos to texture distribution
+                    distance *= (1 + params.chaosSeepageIntensity * 0.5);
+                    
+                    let dotX = brush.x + cos(angle) * distance;
+                    let dotY = brush.y + sin(angle) * distance;
+                    let dotSize = random(0.5, 2.5) * params.textureIntensity;
+                    let dotOpacity = layerOpacity * random(0.3, 0.8) * params.textureIntensity;
+                    
+                    fill(bleedColor.r, bleedColor.g, bleedColor.b, dotOpacity);
+                    circle(dotX, dotY, dotSize);
+                }
             }
         }
         
@@ -732,5 +739,5 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
     return false;
 };
 
-console.log("✅ Waterscape Studio v2.5 loaded - Clean Chaos Seepage!");
-console.log("🎨 Restored original clarity with subtle chaos seepage control");
+console.log("✅ Waterscape Studio v2.6 loaded - Restored FX Visibility!");
+console.log("🎛️ All watercolor FX parameters now have clear, visible effects");
