@@ -64,6 +64,14 @@
             
             <div class="control-item">
                 <div class="control-label">
+                    <span>🌪️ Chaos Seepage</span>
+                    <span class="control-value" id="chaosSeepageIntensityValue">0.7</span>
+                </div>
+                <input type="range" class="slider" id="chaosSeepageIntensity" min="0.0" max="1.0" step="0.1" value="0.7">
+            </div>
+            
+            <div class="control-item">
+                <div class="control-label">
                     <span>💧 Color Bleeding</span>
                     <span class="control-value" id="colorBleedingValue">On</span>
                 </div>
@@ -191,7 +199,7 @@
             <button class="btn btn-secondary" onclick="savePNG()">Export PNG</button>
         </div>
 
-        <div class="version-info">v2.2 • Advanced Water Effects: Color Bleeding + Wet-on-Wet + Depth</div>
+        <div class="version-info">v2.4 • Chaos Seepage Control + Advanced Water Effects</div>
     </div>
 
     <div class="canvas-container">
