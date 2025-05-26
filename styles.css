@@ -133,6 +133,42 @@ body {
     font-style: italic;
 }
 
+/* Experimental Control Styling */
+.experimental-slider {
+    background: rgba(245, 158, 11, 0.2);
+}
+
+.experimental-slider:hover {
+    background: rgba(245, 158, 11, 0.3);
+}
+
+.experimental-slider::-webkit-slider-thumb {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4), 
+                0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+.experimental-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5), 
+                0 0 0 3px rgba(245, 158, 11, 0.25);
+}
+
+.experimental-dropdown {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.experimental-dropdown:hover {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.15);
+}
+
+.experimental-dropdown:focus {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
 .section-header {
     color: #f4f4f5;
     margin-bottom: 16px;
