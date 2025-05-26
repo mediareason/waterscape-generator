@@ -86,16 +86,46 @@ Implements the renowned watercolor simulation technique:
 - ✅ Functional color picker
 - ✅ Stable export functionality
 
-## 🎯 Branches
-- `main` - Latest development
-- `stable` - Production-ready stable build (v2.1)
+## 🎯 Branch Structure
+
+### Production Branches
+- **`main`** - Latest stable development
+- **`stable`** - Production-ready v2.1 build ⭐
+
+### Development Branches  
+- **`experimental`** - 🧪 New feature testing ground
+  - Orange-themed experimental UI
+  - Safe space for trying new watercolor effects
+  - Advanced features that might break things
+  - Community feature requests
+
+### Branch Guidelines
+- Use `stable` for production deployments
+- Use `experimental` for testing new features
+- Merge stable features from `experimental` → `main` → `stable`
+
+## 🧪 Experimental Features
+
+Want to try cutting-edge features? Check out the `experimental` branch for:
+- Advanced water effects (bleeding, wet-on-wet)
+- New brush algorithms
+- Animation capabilities
+- Additional export formats
+- Performance optimizations
+
+⚠️ **Note**: Experimental features may be unstable or change frequently.
 
 ## 🤝 Contributing
 
-This is a stable, production-ready build. For new features or improvements:
+### For Stable Features
 1. Branch from `stable` for safety
 2. Test thoroughly before merging
 3. Maintain backward compatibility
+
+### For Experimental Features
+1. Branch from `experimental`
+2. Mark unstable features clearly
+3. Document any breaking changes
 
 ## 🎨 Art Inspiration
 
@@ -107,4 +137,4 @@ Based on the watercolor simulation techniques popularized by Tyler Hobbs and oth
 
 ---
 
-**🏆 Stable Build** | **🎨 Tyler Hobbs Algorithm** | **🚀 Production Ready**
+**🏆 Stable Build** | **🎨 Tyler Hobbs Algorithm** | **🚀 Production Ready** | **🧪 Experimental Branch Available**
