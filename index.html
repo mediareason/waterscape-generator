@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Waterscape</title>
+    <title>Waterscape - Experimental</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -12,6 +12,7 @@
         <div class="app-header">
             <div class="app-title">Waterscape</div>
             <div class="app-subtitle">Generative Watercolor Studio</div>
+            <div class="experimental-badge">🧪 EXPERIMENTAL BUILD</div>
         </div>
         
         <div class="control-section">
@@ -56,6 +57,24 @@
                     <span class="control-value" id="brushSizeValue">90</span>
                 </div>
                 <input type="range" class="slider" id="brushSize" min="40" max="150" value="90">
+            </div>
+        </div>
+
+        <div class="control-section experimental-section">
+            <div class="section-header">🧪 Experimental Features</div>
+            <div class="experimental-info">
+                This section is for testing new features. Expect bugs and changes!
+            </div>
+            
+            <!-- Placeholder for experimental features -->
+            <div class="control-item">
+                <div class="control-label">
+                    <span>🔬 Test Feature</span>
+                    <span class="control-value">Coming Soon</span>
+                </div>
+                <div class="experimental-placeholder">
+                    New experimental features will be added here...
+                </div>
             </div>
         </div>
 
@@ -115,7 +134,7 @@
             <button class="btn btn-secondary" onclick="savePNG()">Export PNG</button>
         </div>
 
-        <div class="version-info">v2.1 • Tyler Hobbs Algorithm</div>
+        <div class="version-info">v2.1-experimental • Tyler Hobbs Algorithm</div>
     </div>
 
     <div class="canvas-container">
