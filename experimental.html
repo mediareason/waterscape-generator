@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔬 Chaos Investigation Waterscape - Experimental Branch</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Additional experimental styles */
+        .experimental-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .chaos-section {
+            background: linear-gradient(135deg, rgba(255,107,107,0.1), rgba(78,205,196,0.1));
+            border: 2px solid rgba(255,107,107,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        
+        .chaos-section h3 {
+            color: #ff6b6b;
+            margin-bottom: 15px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        
+        .method-select {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .method-select:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .chaos-button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin: 10px 5px;
+        }
+        
+        .chaos-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .investigation-status {
+            background: rgba(0,0,0,0.8);
+            color: #4ecdc4;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 10px 0;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        
+        .control-group label {
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .parameter-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .parameter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="experimental-badge">🔬 EXPERIMENTAL</div>
+        
+        <header>
+            <h1>🌊 Waterscape</h1>
+            <p>Chaos Investigation Studio - Experimental Branch</p>
+        </header>
+
+        <div class="content">
+            <div class="controls">
+                <div class="control-section">
+                    <h3>🎨 Color Palette</h3>
+                    <div class="control-group">
+                        <select id="paletteSelect">
+                            <option value="vibrant">Vibrant</option>
+                            <option value="pastel">Pastel</option>
+                            <option value="earth">Earth Tones</option>
+                            <option value="ocean">Ocean</option>
+                            <option value="sunset">Sunset</option>
+                            <option value="forest">Forest</option>
+                            <option value="monochrome">Monochrome</option>
+                        </select>
+                    </div>
+                    <div id="colorPalette" class="color-palette"></div>
+                </div>
+
+                <div class="control-section">
+                    <h3>🎮 Generation</h3>
+                    
+                    <div class="control-group">
+                        <label for="brushCount">Brush Count:</label>
+                        <input type="range" id="brushCount" min="3" max="25" value="12">
+                        <span id="brushCountValue">12</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="layersPerBrush">Layers per Brush:</label>
+                        <input type="range" id="layersPerBrush" min="5" max="50" value="25">
+                        <span id="layersPerBrushValue">25</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="brushSize">Brush Size:</label>
+                        <input type="range" id="brushSize" min="30" max="150" value="90">
+                        <span id="brushSizeValue">90</span>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>🌀 Watercolor FX</h3>
+                    
+                    <div class="control-group">
+                        <label for="edgeComplexity">Edge Complexity:</label>
+                        <input type="range" id="edgeComplexity" min="1" max="10" value="4">
+                        <span id="edgeComplexityValue">4</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="deformStrength">Blur Amount:</label>
+                        <input type="range" id="deformStrength" min="0.1" max="1.0" step="0.1" value="0.3">
+                        <span id="deformStrengthValue">0.3</span>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="opacity">Layer Opacity:</label>
+                        <input type="range" id="opacity" min="1" max="20" value="8">
+                        <span id="opacityValue">8</span>
+                    </div>
+                </div>
+
+                <!-- Chaos Investigation Section -->
+                <div class="chaos-section">
+                    <h3>🔬 Chaos Investigation System</h3>
+                    
+                    <div class="investigation-status" id="investigationStatus">
+                        Ready for chaos investigation...
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="chaosMethod">Investigation Method:</label>
+                        <select id="chaosMethod" class="method-select">
+                            <option value="1">🌀 Lorenz Attractors</option>
+                            <option value="2">🌊 Flow Field Followers</option>
+                            <option value="3">🌿 Fractal Branches</option>
+                            <option value="4">🔬 Cellular Automata</option>
+                            <option value="5">🌸 Fibonacci Spirals</option>
+                            <option value="6">⚗️ Reaction-Diffusion</option>
+                            <option value="0">🎭 Hybrid Multi-Method</option>
+                        </select>
+                    </div>
+                    
+                    <div class="parameter-grid">
+                        <div class="control-group">
+                            <label for="chaosIntensity">🌪️ Chaos Intensity:</label>
+                            <input type="range" id="chaosIntensity" min="0.1" max="2.0" step="0.1" value="0.7">
+                            <span id="chaosIntensityValue">0.7</span>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="chaosDensity">🕸️ Pattern Density:</label>
+                            <input type="range" id="chaosDensity" min="0.1" max="1.5" step="0.1" value="0.5">
+                            <span id="chaosDensityValue">0.5</span>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="chaosEvolution">⏰ Temporal Evolution:</label>
+                            <input type="range" id="chaosEvolution" min="0.0" max="1.0" step="0.1" value="0.3">
+                            <span id="chaosEvolutionValue">0.3</span>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="chaosComplexity">🧬 Structural Complexity:</label>
+                            <input type="range" id="chaosComplexity" min="0.1" max="1.0" step="0.1" value="0.6">
+                            <span id="chaosComplexityValue">0.6</span>
+                        </div>
+                        
+                        <div class="control-group">
+                            <label for="chaosOrganic">🍃 Organic Factor:</label>
+                            <input type="range" id="chaosOrganic" min="0.1" max="1.0" step="0.1" value="0.8">
+                            <span id="chaosOrganicValue">0.8</span>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button id="investigateChaos" class="chaos-button">🔬 Investigate Chaos</button>
+                        <button id="resetChaos" class="chaos-button" style="background: linear-gradient(45deg, #95a5a6, #7f8c8d);">🔄 Reset Parameters</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>⚙️ Settings</h3>
+                    
+                    <div class="control-group">
+                        <label for="randomSeed">Random Seed:</label>
+                        <input type="number" id="randomSeed" value="42">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="backgroundType">Background:</label>
+                        <select id="backgroundType">
+                            <option value="white">White</option>
+                            <option value="paper">Paper Texture</option>
+                            <option value="gradient">Gradient</option>
+                        </select>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button onclick="generateNew()">Generate</button>
+                        <button onclick="savePNG()">Export PNG</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="canvas-area">
+                <div id="canvasWrapper"></div>
+                
+                <div class="metadata">
+                    <p>v2.1 • Chaos Investigation Algorithm</p>
+                    <p>800 × 600px</p>
+                    <p>Generated with <span id="currentPaletteInfo">vibrant</span> palette • <span id="layerCountInfo">300</span> total layers</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Color Picker Overlay -->
+    <div id="colorPickerOverlay" class="color-picker-overlay">
+        <div class="color-picker-modal">
+            <h3>Edit Color</h3>
+            
+            <div class="color-preview" id="colorPreview"></div>
+            
+            <div class="color-inputs">
+                <input type="color" id="colorInput">
+                <input type="text" id="hexInput" placeholder="#FF6B6B">
+            </div>
+            
+            <div class="preset-colors" id="presetColors"></div>
+            
+            <div class="color-picker-actions">
+                <button onclick="applyColor()">Apply</button>
+                <button onclick="closeColorPicker()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load p5.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    
+    <!-- Load base waterscape script -->
+    <script src="script.js"></script>
+    
+    <!-- Load chaos investigation system -->
+    <script src="script-chaos-investigation.js"></script>
+    
+    <!-- Experimental integration script -->
+    <script>
+        console.log("🧪 Experimental Branch - Chaos Investigation Integration");
+        
+        // Enhanced UI integration for chaos controls
+        document.addEventListener('DOMContentLoaded', () => {
+            const investigationStatus = document.getElementById('investigationStatus');
+            
+            // Status logging
+            function logStatus(message) {
+                if (investigationStatus) {
+                    investigationStatus.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
+                    investigationStatus.scrollTop = investigationStatus.scrollHeight;
+                }
+            }
+            
+            // Override console.log for chaos system
+            const originalLog = console.log;
+            console.log = function(...args) {
+                originalLog.apply(console, args);
+                if (args[0] && typeof args[0] === 'string' && args[0].includes('🌀')) {
+                    logStatus(args.join(' '));
+                }
+            };
+            
+            // Chaos investigation button
+            const investigateButton = document.getElementById('investigateChaos');
+            if (investigateButton) {
+                investigateButton.addEventListener('click', () => {
+                    logStatus('🔬 Starting chaos investigation...');
+                    generateChaosWaterscape();
+                });
+            }
+            
+            // Reset parameters button
+            const resetButton = document.getElementById('resetChaos');
+            if (resetButton) {
+                resetButton.addEventListener('click', () => {
+                    // Reset chaos parameters
+                    if (window.chaosParams) {
+                        window.chaosParams.method = 1;
+                        window.chaosParams.intensity = 0.7;
+                        window.chaosParams.density = 0.5;
+                        window.chaosParams.evolution = 0.3;
+                        window.chaosParams.complexity = 0.6;
+                        window.chaosParams.organicFactor = 0.8;
+                        
+                        // Update UI
+                        document.getElementById('chaosMethod').value = '1';
+                        document.getElementById('chaosIntensity').value = '0.7';
+                        document.getElementById('chaosDensity').value = '0.5';
+                        document.getElementById('chaosEvolution').value = '0.3';
+                        document.getElementById('chaosComplexity').value = '0.6';
+                        document.getElementById('chaosOrganic').value = '0.8';
+                        
+                        // Update value displays
+                        document.getElementById('chaosIntensityValue').textContent = '0.7';
+                        document.getElementById('chaosDensityValue').textContent = '0.5';
+                        document.getElementById('chaosEvolutionValue').textContent = '0.3';
+                        document.getElementById('chaosComplexityValue').textContent = '0.6';
+                        document.getElementById('chaosOrganicValue').textContent = '0.8';
+                        
+                        logStatus('🔄 Chaos parameters reset to defaults');
+                    }
+                });
+            }
+            
+            // Real-time parameter updates with visual feedback
+            const chaosControls = [
+                'chaosIntensity', 'chaosDensity', 'chaosEvolution', 
+                'chaosComplexity', 'chaosOrganic'
+            ];
+            
+            chaosControls.forEach(controlId => {
+                const control = document.getElementById(controlId);
+                const valueDisplay = document.getElementById(controlId + 'Value');
+                
+                if (control && valueDisplay) {
+                    control.addEventListener('input', (e) => {
+                        const value = parseFloat(e.target.value);
+                        valueDisplay.textContent = value.toFixed(1);
+                        
+                        // Update chaos parameters
+                        if (window.chaosParams) {
+                            const paramName = controlId.replace('chaos', '').toLowerCase();
+                            window.chaosParams[paramName] = value;
+                        }
+                        
+                        // Color-code the value based on intensity
+                        const intensity = (value - parseFloat(control.min)) / (parseFloat(control.max) - parseFloat(control.min));
+                        const hue = intensity * 120; // Green to red
+                        valueDisplay.style.color = `hsl(${120 - hue}, 70%, 45%)`;
+                    });
+                }
+            });
+            
+            // Method selector with descriptions
+            const methodSelect = document.getElementById('chaosMethod');
+            if (methodSelect) {
+                methodSelect.addEventListener('change', (e) => {
+                    const method = parseInt(e.target.value);
+                    if (window.chaosParams) {
+                        window.chaosParams.method = method;
+                    }
+                    
+                    const descriptions = {
+                        0: 'Combining multiple chaos systems for maximum complexity',
+                        1: 'Using strange attractors for dynamic flow patterns',
+                        2: 'Following turbulent flow fields for organic movement',
+                        3: 'Growing fractal branches with recursive complexity',
+                        4: 'Evolving cellular patterns through generational rules',
+                        5: 'Spiraling with golden ratio mathematical precision',
+                        6: 'Simulating chemical reaction-diffusion processes'
+                    };
+                    
+                    logStatus(`🎭 Method ${method}: ${descriptions[method]}`);
+                });
+            }
+            
+            logStatus('🔬 Chaos Investigation System initialized');
+            logStatus('Ready to explore organic seepage patterns');
+        });
+        
+        // Enhanced generation function with chaos status
+        window.generateChaosWaterscape = function() {
+            const investigationStatus = document.getElementById('investigationStatus');
+            if (investigationStatus) {
+                investigationStatus.innerHTML = '<div>🌀 Generating chaos-enhanced waterscape...</div>';
+            }
+            
+            // Call the chaos generation function
+            if (window.generateChaosWaterscape) {
+                setTimeout(() => {
+                    try {
+                        // This calls the function from script-chaos-investigation.js
+                        if (typeof generateChaosWaterscape === 'function') {
+                            generateChaosWaterscape();
+                        }
+                    } catch (error) {
+                        console.error('Chaos generation error:', error);
+                        if (investigationStatus) {
+                            investigationStatus.innerHTML += '<div style="color: #ff6b6b;">❌ Error in chaos generation</div>';
+                        }
+                    }
+                }, 100);
+            }
+        };
+        
+        console.log("✅ Experimental Chaos Investigation UI loaded");
+    </script>
+</body>
+</html>
