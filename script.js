@@ -1,4 +1,4 @@
-console.log("🌊 Waterscape Studio v2.4 - Chaos Seepage Control Edition");
+console.log("🌊 Waterscape Studio v2.4.1 - Fixed Canvas Coverage");
 
 // Color palettes
 let palettes = {
@@ -111,7 +111,7 @@ function createSeepageExtensions(centerX, centerY, baseRadius, params) {
     
     for (let i = 0; i < extensionCount; i++) {
         let angle = random(TWO_PI);
-        let extensionLength = baseRadius * random(0.3, 1.2) * (params.deformStrength + 0.5) * chaosMultiplier;
+        let extensionLength = baseRadius * random(0.3, 1.5) * (params.deformStrength + 0.5) * chaosMultiplier;
         let segments = Math.floor(random(5, 15) * (0.5 + chaosMultiplier * 0.5));
         
         let currentX = centerX + cos(angle) * baseRadius * 0.7;
@@ -328,11 +328,13 @@ function createFallbackShape(centerX, centerY, radius) {
     return vertices;
 }
 
-// Brush creation with enhanced seepage
+// Brush creation with enhanced seepage and FULL CANVAS COVERAGE
 function createWatercolorBrush(depthLayer = 0) {
     try {
-        let x = random(width * 0.15, width * 0.85);
-        let y = random(height * 0.15, height * 0.85);
+        // FIXED: Expand positioning to cover full canvas with seepage buffer
+        let seepageBuffer = params.brushSize * (0.5 + params.chaosSeepageIntensity * 0.5);
+        let x = random(-seepageBuffer, width + seepageBuffer);
+        let y = random(-seepageBuffer, height + seepageBuffer);
         let size = random(params.brushSize * 0.7, params.brushSize * 1.3);
         
         let colorIndex = int(random(palettes[currentPalette].length));
@@ -529,7 +531,7 @@ function drawOrganicSeepageLayer(brush, layerIndex, allBrushes) {
     }
 }
 
-// Generation with enhanced seepage
+// Generation with enhanced seepage and improved brush count
 async function generateWaterscape() {
     if (isGenerating) return;
     isGenerating = true;
@@ -546,8 +548,11 @@ async function generateWaterscape() {
         
         let depthLayers = params.depthEffect ? params.depthLayers : 1;
         
+        // FIXED: Increase brush count slightly to ensure better coverage
+        let totalBrushCount = Math.max(params.brushCount, params.brushCount + 2);
+        
         for (let depth = 0; depth < depthLayers; depth++) {
-            let brushesInLayer = Math.ceil(params.brushCount / depthLayers);
+            let brushesInLayer = Math.ceil(totalBrushCount / depthLayers);
             
             for (let i = 0; i < brushesInLayer; i++) {
                 let brush = createWatercolorBrush(depth);
@@ -878,6 +883,6 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
     return false;
 };
 
-console.log("✅ Waterscape Studio v2.4 loaded with Chaos Seepage Control!");
-console.log("🌊 New Feature: Chaos Seepage Intensity Slider for Direct Control!");
+console.log("✅ Waterscape Studio v2.4.1 loaded with Fixed Canvas Coverage!");
+console.log("🌊 FIXED: Brush positioning now covers full canvas with seepage buffer");
 console.log("🎛️ Use the chaosSeepageIntensity slider to control organic seepage effects");
