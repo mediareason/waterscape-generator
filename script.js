@@ -1,4 +1,4 @@
-console.log("🌊 Waterscape Studio v2.4.1 - Chaos Seepage Control Edition");
+console.log("🎨 Waterscape Studio v2.5 - Clean Chaos Seepage");
 
 // Color palettes
 let palettes = {
@@ -40,7 +40,7 @@ let params = {
     depthEffect: true,
     depthLayers: 3,
     randomWalkMode: false,
-    // NEW: Chaos Seepage Control
+    // Chaos Seepage Control
     chaosSeepageIntensity: 0.7
 };
 
@@ -48,19 +48,9 @@ let canvas;
 let isGenerating = false;
 let activeBrushes = [];
 
-// Enhanced noise functions for organic chaos
-function turbulentNoise(x, y, octaves = 4) {
-    let value = 0;
-    let amplitude = 1;
-    let frequency = 0.003;
-    
-    for (let i = 0; i < octaves; i++) {
-        value += noise(x * frequency, y * frequency) * amplitude;
-        amplitude *= 0.5;
-        frequency *= 2;
-    }
-    
-    return value;
+// Simple noise function
+function simpleNoise(x, y, scale = 1) {
+    return noise(x * scale * 0.01, y * scale * 0.01);
 }
 
 // Advanced watercolor effects
@@ -91,130 +81,55 @@ function createColorBleedEffect(centerX, centerY, baseColor, nearbyBrushes) {
         }
     }
     
-    // Apply chaos seepage to color variation
-    let chaosColorVariation = params.chaosSeepageIntensity * 15;
-    blendedColor.r = constrain(blendedColor.r + random(-chaosColorVariation, chaosColorVariation), 0, 255);
-    blendedColor.g = constrain(blendedColor.g + random(-chaosColorVariation, chaosColorVariation), 0, 255);
-    blendedColor.b = constrain(blendedColor.b + random(-chaosColorVariation, chaosColorVariation), 0, 255);
+    // Apply light chaos seepage to color variation
+    let colorVariation = params.chaosSeepageIntensity * 10;
+    blendedColor.r = constrain(blendedColor.r + random(-colorVariation, colorVariation), 0, 255);
+    blendedColor.g = constrain(blendedColor.g + random(-colorVariation, colorVariation), 0, 255);
+    blendedColor.b = constrain(blendedColor.b + random(-colorVariation, colorVariation), 0, 255);
     
     return blendedColor;
 }
 
-// Create chaotic seepage extensions with intensity control
-function createSeepageExtensions(centerX, centerY, baseRadius, params) {
-    let extensions = [];
-    let chaosMultiplier = params.chaosSeepageIntensity;
+// Simple wet-on-wet effect
+function createWetOnWetLayer(brush, layerIndex, nearbyBrushes) {
+    if (!params.wetOnWet) return null;
     
-    // Scale extension count based on chaos intensity
-    let baseExtensions = map(params.edgeComplexity, 1, 10, 3, 12);
-    let extensionCount = Math.floor(baseExtensions * (0.3 + chaosMultiplier * 0.7));
-    
-    for (let i = 0; i < extensionCount; i++) {
-        let angle = random(TWO_PI);
-        let extensionLength = baseRadius * random(0.3, 1.2) * (params.deformStrength + 0.5) * chaosMultiplier;
-        let segments = Math.floor(random(5, 15) * (0.5 + chaosMultiplier * 0.5));
-        
-        let currentX = centerX + cos(angle) * baseRadius * 0.7;
-        let currentY = centerY + sin(angle) * baseRadius * 0.7;
-        let currentAngle = angle;
-        
-        let extensionPoints = [{x: currentX, y: currentY}];
-        
-        for (let j = 1; j <= segments; j++) {
-            let t = j / segments;
-            
-            // Apply chaotic forces scaled by intensity
-            let chaosNoise = turbulentNoise(currentX, currentY, 3) * 2 * chaosMultiplier;
-            let flowTurbulence = turbulentNoise(currentX * 2, currentY * 2, 2) * 1.5 * chaosMultiplier;
-            let fiberInfluence = noise(currentX * 0.01, currentY * 0.01) * PI * chaosMultiplier;
-            
-            // Update angle with organic chaos scaled by intensity
-            let angleChange = (chaosNoise - 1) * 0.8 + (flowTurbulence - 0.75) * 0.6 + sin(fiberInfluence) * 0.4;
-            currentAngle += angleChange * chaosMultiplier;
-            
-            // Variable step length for irregular absorption
-            let stepLength = (extensionLength / segments) * (0.5 + turbulentNoise(currentX, currentY) * 0.8 * chaosMultiplier);
-            
-            currentX += cos(currentAngle) * stepLength;
-            currentY += sin(currentAngle) * stepLength;
-            
-            extensionPoints.push({x: currentX, y: currentY});
-            
-            // Create micro-branches for capillary action (scaled by chaos)
-            let branchProbability = 0.3 * chaosMultiplier;
-            if (random() < branchProbability && j > 2) {
-                let branchAngle = currentAngle + random(-PI/3, PI/3) * chaosMultiplier;
-                let branchLength = stepLength * random(0.5, 1.5) * chaosMultiplier;
-                let branchX = currentX + cos(branchAngle) * branchLength;
-                let branchY = currentY + sin(branchAngle) * branchLength;
-                extensionPoints.push({x: branchX, y: branchY});
-            }
-        }
-        
-        extensions.push(extensionPoints);
-    }
-    
-    return extensions;
-}
-
-// Enhanced chaotic wet-on-wet blending with intensity control
-function createChaoticWetBlending(brush, layerIndex, nearbyBrushes) {
-    if (!params.wetOnWet || nearbyBrushes.length === 0) return [];
-    
-    let blendZones = [];
-    let chaosMultiplier = params.chaosSeepageIntensity;
-    
+    let wetZones = [];
     for (let nearby of nearbyBrushes) {
         let distance = dist(brush.x, brush.y, nearby.x, nearby.y);
-        let wetDistance = params.wetBlendRadius * params.bleedingIntensity * (1 + chaosMultiplier * 0.5);
+        let wetDistance = params.wetBlendRadius * params.bleedingIntensity;
         
         if (distance < wetDistance && distance > 0) {
-            // Create chaotic seepage paths between brushes (scaled by chaos intensity)
-            let baseSegments = int(random(8, 16));
-            let pathSegments = Math.floor(baseSegments * (0.5 + chaosMultiplier * 0.5));
-            
-            for (let step = 1; step <= pathSegments; step++) {
-                let t = step / (pathSegments + 1);
+            let blendSteps = 2 + Math.floor(params.chaosSeepageIntensity * 2);
+            for (let step = 1; step <= blendSteps; step++) {
+                let t = step / (blendSteps + 1);
+                let blendX = lerp(brush.x, nearby.x, t);
+                let blendY = lerp(brush.y, nearby.y, t);
                 
-                // Base interpolation
-                let baseX = lerp(brush.x, nearby.x, t);
-                let baseY = lerp(brush.y, nearby.y, t);
+                // Add subtle chaos displacement
+                let chaosOffset = params.chaosSeepageIntensity * 15;
+                blendX += random(-chaosOffset, chaosOffset);
+                blendY += random(-chaosOffset, chaosOffset);
                 
-                // Add turbulent displacement for organic seepage (scaled by chaos)
-                let turbulence = turbulentNoise(baseX, baseY, 4) * 50 * chaosMultiplier;
-                let flowNoise = noise(baseX * 0.005, baseY * 0.005, layerIndex * 0.1) * 80 * chaosMultiplier;
+                let blendSize = lerp(brush.size, nearby.size, t) * (0.6 + random(0.3));
                 
-                let seepageX = baseX + (turbulence - 25 * chaosMultiplier) * params.deformStrength;
-                let seepageY = baseY + (flowNoise - 40 * chaosMultiplier) * params.deformStrength;
-                
-                let blendSize = lerp(brush.size, nearby.size, t) * (0.4 + random(0.4));
-                
-                // Create organic color blending with chaos variation
-                let colorChaos = 20 * chaosMultiplier;
                 let blendColor = {
-                    r: lerp(brush.r, nearby.r, t * 0.8) + random(-colorChaos, colorChaos),
-                    g: lerp(brush.g, nearby.g, t * 0.8) + random(-colorChaos, colorChaos),
-                    b: lerp(brush.b, nearby.b, t * 0.8) + random(-colorChaos, colorChaos)
+                    r: lerp(brush.r, nearby.r, t * 0.7),
+                    g: lerp(brush.g, nearby.g, t * 0.7),
+                    b: lerp(brush.b, nearby.b, t * 0.7)
                 };
                 
-                // Constrain colors
-                blendColor.r = constrain(blendColor.r, 0, 255);
-                blendColor.g = constrain(blendColor.g, 0, 255);
-                blendColor.b = constrain(blendColor.b, 0, 255);
-                
-                blendZones.push({
-                    x: seepageX,
-                    y: seepageY,
+                wetZones.push({
+                    x: blendX,
+                    y: blendY,
                     size: blendSize,
                     color: blendColor,
-                    opacity: params.opacity * 0.3 * (1 - t * 0.3),
-                    seepageExtensions: random() < (0.4 * chaosMultiplier) // Chaos-scaled extensions
+                    opacity: params.opacity * 0.4 * (1 - t * 0.5)
                 });
             }
         }
     }
-    
-    return blendZones;
+    return wetZones;
 }
 
 function calculateDepthColor(baseColor, x, y, depth = 0) {
@@ -238,37 +153,34 @@ function calculateDepthColor(baseColor, x, y, depth = 0) {
     return adjustedColor;
 }
 
-// Enhanced organic seepage shape creation with chaos intensity control
-function createOrganicSeepageShape(centerX, centerY, baseRadius, complexity = 4) {
+// Enhanced shape generation with controlled chaos
+function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
     try {
         let vertices = [];
-        let sides = int(random(6, 10));
-        let chaosMultiplier = params.chaosSeepageIntensity;
+        let sides = int(random(7, 12));
         
-        // Create base shape with chaos-controlled irregularity
         for (let i = 0; i < sides; i++) {
             let angle = (TWO_PI / sides) * i;
+            let angleNoise = simpleNoise(i * 0.5, centerX * 0.001, centerY * 0.001);
             
-            // Add multiple layers of noise for chaos (scaled by intensity)
-            let angleNoise1 = noise(i * 0.5, centerX * 0.001, centerY * 0.001);
-            let angleNoise2 = turbulentNoise(centerX + i * 50, centerY + i * 50);
-            let angleVariation = (angleNoise1 - 0.5) * 1.2 + (angleNoise2 - 0.5) * 0.8;
-            angle += angleVariation * chaosMultiplier;
+            // Apply chaos seepage to angle variation
+            let angleVariation = (angleNoise - 0.5) * 0.6;
+            angleVariation *= (1 + params.chaosSeepageIntensity * 0.5);
+            angle += angleVariation;
             
-            // Highly variable radius for organic feel (scaled by chaos)
-            let radiusNoise = turbulentNoise(i * 100 + centerX, i * 100 + centerY, 3);
-            let radiusVariation = (0.3 + radiusNoise * 1.2);
-            let radiusVar = baseRadius * (0.7 + radiusVariation * chaosMultiplier * 0.3);
+            let radiusNoise = simpleNoise(i * 0.3 + 100, centerX * 0.001, centerY * 0.001);
+            let radiusVar = baseRadius * (0.5 + radiusNoise * 0.8);
+            
+            // Apply chaos seepage to radius variation
+            radiusVar *= (1 + params.chaosSeepageIntensity * 0.3 * (radiusNoise - 0.5));
             
             let x = centerX + cos(angle) * radiusVar;
             let y = centerY + sin(angle) * radiusVar;
             vertices.push({x: x, y: y});
         }
         
-        // Apply multiple deformation rounds for organic chaos (scaled by intensity)
-        let effectiveComplexity = Math.max(2, Math.floor(complexity * (0.5 + chaosMultiplier * 0.5)));
-        
-        for (let round = 0; round < effectiveComplexity; round++) {
+        // Apply deformation rounds based on complexity
+        for (let round = 0; round < complexity; round++) {
             let newVertices = [];
             
             for (let i = 0; i < vertices.length; i++) {
@@ -277,26 +189,18 @@ function createOrganicSeepageShape(centerX, centerY, baseRadius, complexity = 4)
                 
                 newVertices.push(current);
                 
-                // Create highly irregular midpoints
                 let midX = (current.x + next.x) / 2;
                 let midY = (current.y + next.y) / 2;
                 
-                // Multiple noise layers for chaos (scaled by intensity)
-                let noiseX1 = turbulentNoise(midX * 0.005, midY * 0.005, round + 1);
-                let noiseY1 = turbulentNoise(midX * 0.005 + 1000, midY * 0.005, round + 1);
-                let noiseX2 = noise(midX * 0.02, midY * 0.02, round * 0.1);
-                let noiseY2 = noise(midX * 0.02 + 2000, midY * 0.02, round * 0.1);
+                let noiseX = simpleNoise(midX * 0.005, midY * 0.005, round * 0.1);
+                let noiseY = simpleNoise(midX * 0.005 + 1000, midY * 0.005, round * 0.1);
                 
-                let baseDeformStrength = params.deformStrength * 60 * (1 + round * 0.3);
-                let chaosDeformStrength = baseDeformStrength * chaosMultiplier;
-                let deformX = (noiseX1 - 0.5) * chaosDeformStrength + (noiseX2 - 0.5) * chaosDeformStrength * 0.5;
-                let deformY = (noiseY1 - 0.5) * chaosDeformStrength + (noiseY2 - 0.5) * chaosDeformStrength * 0.5;
+                let deformStrength = params.deformStrength * 40;
+                // Scale deformation by chaos seepage
+                deformStrength *= (1 + params.chaosSeepageIntensity * 0.5);
                 
-                // Add flow-direction bias for seepage effect (scaled by chaos)
-                let flowBias = atan2(midY - centerY, midX - centerX);
-                let flowStrength = params.deformStrength * 20 * chaosMultiplier;
-                deformX += cos(flowBias + noise(midX * 0.01, midY * 0.01) * PI) * flowStrength;
-                deformY += sin(flowBias + noise(midX * 0.01, midY * 0.01) * PI) * flowStrength;
+                let deformX = (noiseX - 0.5) * deformStrength;
+                let deformY = (noiseY - 0.5) * deformStrength;
                 
                 newVertices.push({
                     x: midX + deformX,
@@ -309,7 +213,7 @@ function createOrganicSeepageShape(centerX, centerY, baseRadius, complexity = 4)
         return vertices.length > 2 ? vertices : createFallbackShape(centerX, centerY, baseRadius);
         
     } catch (error) {
-        console.error("Error creating organic seepage shape:", error);
+        console.error("Error creating splotchy shape:", error);
         return createFallbackShape(centerX, centerY, baseRadius);
     }
 }
@@ -328,13 +232,13 @@ function createFallbackShape(centerX, centerY, radius) {
     return vertices;
 }
 
-// Brush creation with enhanced seepage and good canvas coverage
+// Brush creation
 function createWatercolorBrush(depthLayer = 0) {
     try {
-        // Balanced seepage buffer for good coverage without over-complication
-        let seepageBuffer = params.brushSize * (0.5 + params.chaosSeepageIntensity * 0.5);
-        let x = random(-seepageBuffer, width + seepageBuffer);
-        let y = random(-seepageBuffer, height + seepageBuffer);
+        // Use original brush positioning with slight expansion for chaos seepage
+        let expansion = params.chaosSeepageIntensity * 0.2;
+        let x = random(width * (0.15 - expansion), width * (0.85 + expansion));
+        let y = random(height * (0.15 - expansion), height * (0.85 + expansion));
         let size = random(params.brushSize * 0.7, params.brushSize * 1.3);
         
         let colorIndex = int(random(palettes[currentPalette].length));
@@ -346,16 +250,16 @@ function createWatercolorBrush(depthLayer = 0) {
         
         let depthColor = calculateDepthColor({r, g, b}, x, y, depthLayer);
         
-        // Apply chaos seepage to initial color variation
-        let chaosColorVar = 25 * params.chaosSeepageIntensity;
-        depthColor.r = constrain(depthColor.r + random(-chaosColorVar, chaosColorVar), 0, 255);
-        depthColor.g = constrain(depthColor.g + random(-chaosColorVar, chaosColorVar), 0, 255);
-        depthColor.b = constrain(depthColor.b + random(-chaosColorVar, chaosColorVar), 0, 255);
+        // Apply subtle chaos color variation
+        let colorVar = params.chaosSeepageIntensity * 15;
+        depthColor.r = constrain(depthColor.r + random(-colorVar, colorVar), 0, 255);
+        depthColor.g = constrain(depthColor.g + random(-colorVar, colorVar), 0, 255);
+        depthColor.b = constrain(depthColor.b + random(-colorVar, colorVar), 0, 255);
         
-        let organicVertices = createOrganicSeepageShape(x, y, size, params.edgeComplexity);
+        let splotchyVertices = createSplotchyShape(x, y, size, params.edgeComplexity);
         
         return {
-            basePolygon: organicVertices,
+            basePolygon: splotchyVertices,
             r: depthColor.r,
             g: depthColor.g,
             b: depthColor.b,
@@ -386,28 +290,28 @@ function findNearbyBrushes(brush, allBrushes, maxDistance) {
     return nearby;
 }
 
-// Enhanced drawing function with chaos-controlled organic seepage effects
-function drawOrganicSeepageLayer(brush, layerIndex, allBrushes) {
+// Drawing with controlled chaos seepage
+function drawWatercolorLayer(brush, layerIndex, allBrushes) {
     try {
         if (!brush || !brush.basePolygon || brush.basePolygon.length < 3) {
             return;
         }
         
-        let maxBleedDistance = (params.brushSize * 2) * params.bleedingIntensity;
+        let maxBleedDistance = (params.brushSize * 1.5) * params.bleedingIntensity;
         let nearbyBrushes = findNearbyBrushes(brush, allBrushes, maxBleedDistance);
         
         let bleedColor = createColorBleedEffect(brush.x, brush.y, brush.originalColor, nearbyBrushes);
         
-        let variation = map(layerIndex, 0, params.layersPerBrush, 1.2, 0.4);
-        let baseJitter = variation * 15;
-        let chaosJitter = baseJitter * params.chaosSeepageIntensity; // Chaos-controlled jitter
+        let variation = map(layerIndex, 0, params.layersPerBrush, 1.0, 0.6);
+        let positionJitter = variation * 8;
+        // Add controlled chaos jitter
+        positionJitter *= (1 + params.chaosSeepageIntensity * 0.5);
         
-        // Create main organic shape with enhanced seepage
-        let layerVertices = createOrganicSeepageShape(
-            brush.x + random(-chaosJitter, chaosJitter),
-            brush.y + random(-chaosJitter, chaosJitter),
-            brush.size * random(0.6 + variation * 0.3, 1.3 + variation * 0.3),
-            Math.max(3, params.edgeComplexity)
+        let layerVertices = createSplotchyShape(
+            brush.x + random(-positionJitter, positionJitter),
+            brush.y + random(-positionJitter, positionJitter),
+            brush.size * random(0.7 + variation * 0.2, 1.1 + variation * 0.2),
+            Math.max(2, params.edgeComplexity - 1)
         );
         
         if (!layerVertices || layerVertices.length < 3) {
@@ -416,14 +320,16 @@ function drawOrganicSeepageLayer(brush, layerIndex, allBrushes) {
         
         blendMode(MULTIPLY);
         
-        let layerOpacity = params.opacity * (0.8 + random(0.4) * params.chaosSeepageIntensity);
+        let layerOpacity = params.opacity;
         if (params.textureMasking) {
-            let chaosOpacityVariation = params.chaosSeepageIntensity * 0.8;
-            layerOpacity *= random(0.5, 1.3) * (0.5 + chaosOpacityVariation);
-            layerOpacity *= map(layerIndex, 0, params.layersPerBrush, 1.4, 0.6);
+            layerOpacity *= random(0.6, 1.2);
+            layerOpacity *= map(layerIndex, 0, params.layersPerBrush, 1.2, 0.8);
         }
         
-        // Draw main organic shape
+        if (params.depthEffect) {
+            layerOpacity *= (1 + brush.depth * 0.3);
+        }
+        
         fill(bleedColor.r, bleedColor.g, bleedColor.b, layerOpacity);
         noStroke();
         
@@ -433,111 +339,57 @@ function drawOrganicSeepageLayer(brush, layerIndex, allBrushes) {
         }
         endShape(CLOSE);
         
-        // Add seepage extensions from main shape (controlled by chaos intensity)
-        let extensionProbability = 0.7 * params.chaosSeepageIntensity;
-        if (params.edgeComplexity > 3 && random() < extensionProbability) {
-            let extensions = createSeepageExtensions(brush.x, brush.y, brush.size, params);
-            
-            for (let extension of extensions) {
-                if (extension.length > 2) {
-                    let extensionOpacity = layerOpacity * random(0.3, 0.8) * params.chaosSeepageIntensity;
-                    let extensionWidth = random(1, 4) * (0.5 + params.chaosSeepageIntensity * 0.5);
-                    
-                    stroke(bleedColor.r, bleedColor.g, bleedColor.b, extensionOpacity);
-                    strokeWeight(extensionWidth);
-                    
-                    noFill();
+        // Wet-on-wet blending zones
+        if (params.wetOnWet && nearbyBrushes.length > 0) {
+            let wetZones = createWetOnWetLayer(brush, layerIndex, nearbyBrushes);
+            if (wetZones) {
+                for (let zone of wetZones) {
+                    fill(zone.color.r, zone.color.g, zone.color.b, zone.opacity);
+                    let zoneVertices = createSplotchyShape(zone.x, zone.y, zone.size, 2);
                     beginShape();
-                    for (let point of extension) {
-                        vertex(point.x, point.y);
+                    for (let v of zoneVertices) {
+                        vertex(v.x, v.y);
                     }
-                    endShape();
+                    endShape(CLOSE);
                 }
-            }
-            noStroke();
-        }
-        
-        // Enhanced chaotic wet-on-wet blending
-        let chaoticBlendZones = createChaoticWetBlending(brush, layerIndex, nearbyBrushes);
-        for (let zone of chaoticBlendZones) {
-            fill(zone.color.r, zone.color.g, zone.color.b, zone.opacity);
-            
-            if (zone.seepageExtensions) {
-                // Create mini seepage from blend zones
-                let miniExtensions = createSeepageExtensions(zone.x, zone.y, zone.size * 0.5, {
-                    edgeComplexity: 2,
-                    deformStrength: params.deformStrength * 0.7,
-                    chaosSeepageIntensity: params.chaosSeepageIntensity
-                });
-                
-                for (let ext of miniExtensions) {
-                    if (ext.length > 1) {
-                        stroke(zone.color.r, zone.color.g, zone.color.b, zone.opacity * 0.6);
-                        strokeWeight(1);
-                        noFill();
-                        beginShape();
-                        for (let point of ext) {
-                            vertex(point.x, point.y);
-                        }
-                        endShape();
-                    }
-                }
-                noStroke();
-            } else {
-                // Regular blend zone
-                let zoneVertices = createOrganicSeepageShape(zone.x, zone.y, zone.size, 2);
-                beginShape();
-                for (let v of zoneVertices) {
-                    vertex(v.x, v.y);
-                }
-                endShape(CLOSE);
             }
         }
         
-        // Enhanced texture effects with chaos control
-        let chaoticTextureProbability = 0.25 * params.chaosSeepageIntensity;
-        if (params.textureMasking && random() < chaoticTextureProbability) {
-            let baseSplatters = int(random(2, 6));
-            let numSplatters = Math.floor(baseSplatters * (0.5 + params.chaosSeepageIntensity * 0.5));
-            
-            for (let i = 0; i < numSplatters; i++) {
-                // Create random splatter positions with organic distribution
-                let splatterAngle = random(TWO_PI);
-                let splatterDist = random(brush.size * 0.2, brush.size * 1.2) * (0.8 + params.chaosSeepageIntensity * 0.4);
-                let splatterX = brush.x + cos(splatterAngle) * splatterDist;
-                let splatterY = brush.y + sin(splatterAngle) * splatterDist;
+        // Subtle texture effects
+        if (params.textureMasking && random() < 0.15) {
+            let numDots = int(random(1, 3));
+            for (let i = 0; i < numDots; i++) {
+                let angle = random(TWO_PI);
+                let distance = random(brush.size * 0.3, brush.size * 0.8);
+                // Add chaos displacement to texture
+                distance *= (1 + params.chaosSeepageIntensity * 0.3);
+                let dotX = brush.x + cos(angle) * distance;
+                let dotY = brush.y + sin(angle) * distance;
+                let dotSize = random(1, 3);
+                let dotOpacity = layerOpacity * random(0.2, 0.6);
                 
-                // Add turbulent displacement scaled by chaos
-                let turbulentDisplacement = 30 * params.chaosSeepageIntensity;
-                splatterX += (turbulentNoise(splatterX, splatterY) - 0.5) * turbulentDisplacement;
-                splatterY += (turbulentNoise(splatterX + 1000, splatterY) - 0.5) * turbulentDisplacement;
-                
-                let splatterSize = random(0.5, 3) * (0.7 + params.chaosSeepageIntensity * 0.6);
-                let splatterOpacity = layerOpacity * random(0.2, 0.7) * params.chaosSeepageIntensity;
-                
-                fill(bleedColor.r, bleedColor.g, bleedColor.b, splatterOpacity);
-                circle(splatterX, splatterY, splatterSize);
+                fill(bleedColor.r, bleedColor.g, bleedColor.b, dotOpacity);
+                circle(dotX, dotY, dotSize);
             }
         }
         
         blendMode(BLEND);
         
     } catch (error) {
-        console.error("Error drawing organic seepage layer:", error);
-        // Fallback to simple circle
+        console.error("Error drawing layer:", error);
         fill(brush.r, brush.g, brush.b, params.opacity);
         noStroke();
         circle(brush.x, brush.y, brush.size);
     }
 }
 
-// Generation with enhanced seepage
+// Generation
 async function generateWaterscape() {
     if (isGenerating) return;
     isGenerating = true;
     
     try {
-        console.log(`🌊 Generating waterscape with ${(params.chaosSeepageIntensity * 100).toFixed(0)}% chaos seepage...`);
+        console.log(`🎨 Generating waterscape with ${(params.chaosSeepageIntensity * 100).toFixed(0)}% chaos seepage...`);
         
         randomSeed(params.randomSeed);
         
@@ -548,11 +400,8 @@ async function generateWaterscape() {
         
         let depthLayers = params.depthEffect ? params.depthLayers : 1;
         
-        // Increase brush count slightly for better coverage
-        let totalBrushCount = Math.max(params.brushCount, params.brushCount + 2);
-        
         for (let depth = 0; depth < depthLayers; depth++) {
-            let brushesInLayer = Math.ceil(totalBrushCount / depthLayers);
+            let brushesInLayer = Math.ceil(params.brushCount / depthLayers);
             
             for (let i = 0; i < brushesInLayer; i++) {
                 let brush = createWatercolorBrush(depth);
@@ -562,7 +411,7 @@ async function generateWaterscape() {
             }
         }
         
-        console.log(`✨ Created ${activeBrushes.length} organic brushes with ${(params.chaosSeepageIntensity * 100).toFixed(0)}% seepage intensity`);
+        console.log(`✨ Created ${activeBrushes.length} brushes`);
         
         if (activeBrushes.length === 0) {
             throw new Error("No valid brushes created");
@@ -572,7 +421,7 @@ async function generateWaterscape() {
         
         for (let layer = 0; layer < params.layersPerBrush; layer++) {
             for (let brush of activeBrushes) {
-                drawOrganicSeepageLayer(brush, layer, activeBrushes);
+                drawWatercolorLayer(brush, layer, activeBrushes);
             }
             
             if (layer % 3 === 0) {
@@ -582,7 +431,7 @@ async function generateWaterscape() {
         
         updateMetadata();
         
-        console.log(`🎨 Enhanced seepage generation complete!`);
+        console.log(`🎨 Generation complete!`);
         
     } catch (error) {
         console.error('❌ Generation error:', error);
@@ -598,7 +447,7 @@ async function generateWaterscape() {
             fill(r, g, b, 25);
             noStroke();
             
-            let fallbackVertices = createOrganicSeepageShape(
+            let fallbackVertices = createSplotchyShape(
                 random(width * 0.2, width * 0.8),
                 random(height * 0.2, height * 0.8),
                 random(50, 100),
@@ -770,7 +619,7 @@ function updateEffectControls() {
 }
 
 function setupControls() {
-    console.log("🎛️ Setting up enhanced controls with chaos seepage slider...");
+    console.log("🎛️ Setting up controls...");
     
     const paletteSelect = document.getElementById('paletteSelect');
     if (paletteSelect) {
@@ -838,7 +687,7 @@ function setupControls() {
 // P5.js setup
 function setup() {
     try {
-        console.log("🚀 Setting up chaos seepage canvas...");
+        console.log("🚀 Setting up canvas...");
         canvas = createCanvas(800, 600);
         canvas.parent('canvasWrapper');
         
@@ -857,7 +706,7 @@ function setup() {
 
 function generateNew() {
     if (!isGenerating) {
-        console.log("🔄 Generate new organic seepage called");
+        console.log("🔄 Generate new called");
         generateWaterscape();
     }
 }
@@ -865,8 +714,8 @@ function generateNew() {
 function savePNG() {
     try {
         if (canvas) {
-            console.log("💾 Exporting organic seepage PNG...");
-            saveCanvas(canvas, `waterscape_seepage_${Date.now()}`, 'png');
+            console.log("💾 Exporting PNG...");
+            saveCanvas(canvas, `waterscape_${Date.now()}`, 'png');
         }
     } catch (error) {
         console.error('❌ Export error:', error);
@@ -883,6 +732,5 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
     return false;
 };
 
-console.log("✅ Waterscape Studio v2.4.1 loaded with Chaos Seepage Control!");
-console.log("🌊 Features: Organic Seepage + Chaotic Extensions + Turbulent Flow + Capillary Action");
-console.log("🎛️ Use the chaosSeepageIntensity slider to control organic seepage effects");
+console.log("✅ Waterscape Studio v2.5 loaded - Clean Chaos Seepage!");
+console.log("🎨 Restored original clarity with subtle chaos seepage control");
