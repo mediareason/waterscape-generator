@@ -1,4 +1,4 @@
-console.log("🎨 Waterscape Studio v2.1 initializing...");
+console.log("🧪 Waterscape Studio v2.1-experimental initializing...");
 
 // Color palettes - now editable
 let palettes = {
@@ -33,6 +33,12 @@ let params = {
 };
 
 let canvas;
+
+// Experimental features placeholder
+let experimentalFeatures = {
+    // This is where new experimental features will be added
+    enabled: true
+};
 
 // Color picker functions
 function openColorPicker(colorIndex) {
@@ -224,7 +230,7 @@ function drawWatercolorLayer(brush) {
 
 function generateWaterscape() {
     try {
-        console.log("🎨 Generating waterscape...", params);
+        console.log("🧪 Generating experimental waterscape...", params);
         
         randomSeed(params.randomSeed);
         
@@ -257,7 +263,7 @@ function generateWaterscape() {
         // Update metadata
         updateMetadata();
         
-        console.log("🎨 Generation complete!");
+        console.log("🧪 Experimental generation complete!");
         
     } catch (error) {
         console.error('❌ Generation error:', error);
@@ -333,7 +339,7 @@ function updateColorPalette() {
 }
 
 function setupControls() {
-    console.log("🎛️ Setting up controls...");
+    console.log("🧪 Setting up experimental controls...");
     
     // Palette selector
     const paletteSelect = document.getElementById('paletteSelect');
@@ -395,11 +401,11 @@ function setupControls() {
 
 function setup() {
     try {
-        console.log("🚀 Setting up canvas...");
+        console.log("🧪 Setting up experimental canvas...");
         canvas = createCanvas(800, 600);
         canvas.parent('canvasWrapper');
         
-        console.log("✅ Canvas created successfully");
+        console.log("✅ Experimental canvas created successfully");
         
         setTimeout(() => {
             setupControls();
@@ -413,15 +419,15 @@ function setup() {
 }
 
 function generateNew() {
-    console.log("🔄 Generate new called");
+    console.log("🔄 Generate new experimental waterscape called");
     generateWaterscape();
 }
 
 function savePNG() {
     try {
         if (canvas) {
-            console.log("💾 Exporting PNG...");
-            saveCanvas(canvas, `waterscape_${Date.now()}`, 'png');
+            console.log("💾 Exporting experimental PNG...");
+            saveCanvas(canvas, `waterscape-experimental_${Date.now()}`, 'png');
         }
     } catch (error) {
         console.error('❌ Export error:', error);
@@ -439,4 +445,4 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
     return false;
 };
 
-console.log("✅ Waterscape Studio v2.1 loaded successfully");
+console.log("✅ 🧪 Waterscape Studio v2.1-experimental loaded successfully");
