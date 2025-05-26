@@ -1,6 +1,6 @@
-console.log("🎨 Waterscape Studio v2.6 - Restored FX Visibility");
+console.log("🎨 Waterscape Studio v2.1 initializing...");
 
-// Color palettes
+// Color palettes - now editable
 let palettes = {
     vibrant: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9'],
     pastel: ['#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#FFDFBA', '#E0BBE4', '#957DAD', '#D291BC'],
@@ -11,6 +11,7 @@ let palettes = {
     monochrome: ['#2C3E50', '#34495E', '#7F8C8D', '#95A5A6', '#BDC3C7', '#D5DBDB', '#85929E', '#566573']
 };
 
+// Preset colors for the color picker
 const presetColors = [
     '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
     '#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#FFDFBA', '#E0BBE4', '#957DAD', '#D291BC',
@@ -28,481 +29,12 @@ let params = {
     deformStrength: 0.3,
     opacity: 8,
     randomSeed: 42,
-    backgroundType: 'white',
-    textureMasking: true,
-    textureIntensity: 0.7,
-    textureDensity: 800,
-    // Advanced watercolor effects
-    colorBleeding: true,
-    bleedingIntensity: 0.6,
-    wetOnWet: true,
-    wetBlendRadius: 40,
-    depthEffect: true,
-    depthLayers: 3,
-    randomWalkMode: false,
-    // Chaos Seepage Control
-    chaosSeepageIntensity: 0.7
+    backgroundType: 'white'
 };
 
 let canvas;
-let isGenerating = false;
-let activeBrushes = [];
 
-// Advanced watercolor effects
-function createColorBleedEffect(centerX, centerY, baseColor, nearbyBrushes) {
-    if (!params.colorBleeding || nearbyBrushes.length === 0) {
-        return {
-            r: parseInt(baseColor.slice(1, 3), 16),
-            g: parseInt(baseColor.slice(3, 5), 16),
-            b: parseInt(baseColor.slice(5, 7), 16)
-        };
-    }
-    
-    let blendedColor = {
-        r: parseInt(baseColor.slice(1, 3), 16),
-        g: parseInt(baseColor.slice(3, 5), 16),
-        b: parseInt(baseColor.slice(5, 7), 16)
-    };
-    
-    for (let nearby of nearbyBrushes) {
-        let distance = dist(centerX, centerY, nearby.x, nearby.y);
-        let maxBleedDistance = (params.brushSize * 2) * params.bleedingIntensity;
-        
-        if (distance < maxBleedDistance) {
-            let influence = map(distance, 0, maxBleedDistance, 0.4, 0) * params.bleedingIntensity;
-            blendedColor.r = lerp(blendedColor.r, nearby.r, influence);
-            blendedColor.g = lerp(blendedColor.g, nearby.g, influence);
-            blendedColor.b = lerp(blendedColor.b, nearby.b, influence);
-        }
-    }
-    
-    // Apply chaos seepage color variation
-    let chaosVariation = params.chaosSeepageIntensity * 12;
-    blendedColor.r = constrain(blendedColor.r + random(-chaosVariation, chaosVariation), 0, 255);
-    blendedColor.g = constrain(blendedColor.g + random(-chaosVariation, chaosVariation), 0, 255);
-    blendedColor.b = constrain(blendedColor.b + random(-chaosVariation, chaosVariation), 0, 255);
-    
-    return blendedColor;
-}
-
-function createWetOnWetLayer(brush, layerIndex, nearbyBrushes) {
-    if (!params.wetOnWet) return null;
-    
-    let wetZones = [];
-    for (let nearby of nearbyBrushes) {
-        let distance = dist(brush.x, brush.y, nearby.x, nearby.y);
-        let wetDistance = params.wetBlendRadius * params.bleedingIntensity;
-        
-        if (distance < wetDistance && distance > 0) {
-            let blendSteps = 3 + Math.floor(params.chaosSeepageIntensity * 3);
-            for (let step = 1; step <= blendSteps; step++) {
-                let t = step / (blendSteps + 1);
-                let blendX = lerp(brush.x, nearby.x, t);
-                let blendY = lerp(brush.y, nearby.y, t);
-                
-                // Add chaos displacement
-                let chaosOffset = params.chaosSeepageIntensity * 20;
-                blendX += random(-chaosOffset, chaosOffset);
-                blendY += random(-chaosOffset, chaosOffset);
-                
-                let blendSize = lerp(brush.size, nearby.size, t) * (0.6 + random(0.3));
-                
-                let blendColor = {
-                    r: lerp(brush.r, nearby.r, t * 0.7),
-                    g: lerp(brush.g, nearby.g, t * 0.7),
-                    b: lerp(brush.b, nearby.b, t * 0.7)
-                };
-                
-                wetZones.push({
-                    x: blendX,
-                    y: blendY,
-                    size: blendSize,
-                    color: blendColor,
-                    opacity: params.opacity * 0.4 * (1 - t * 0.5)
-                });
-            }
-        }
-    }
-    return wetZones;
-}
-
-function calculateDepthColor(baseColor, x, y, depth = 0) {
-    if (!params.depthEffect) return baseColor;
-    
-    let depthNoise = noise(x * 0.003, y * 0.003, depth * 0.1);
-    let depthFactor = map(depthNoise, 0, 1, 0.7, 1.3);
-    
-    let adjustedColor = {
-        r: constrain(baseColor.r * depthFactor, 0, 255),
-        g: constrain(baseColor.g * depthFactor, 0, 255),
-        b: constrain(baseColor.b * depthFactor, 0, 255)
-    };
-    
-    if (depthFactor < 1) {
-        let depthBlue = (1 - depthFactor) * 20;
-        adjustedColor.b = constrain(adjustedColor.b + depthBlue, 0, 255);
-        adjustedColor.r = constrain(adjustedColor.r - depthBlue * 0.3, 0, 255);
-    }
-    
-    return adjustedColor;
-}
-
-// Shape generation with clear parameter effects
-function createSplotchyShape(centerX, centerY, baseRadius, complexity = 4) {
-    try {
-        let vertices = [];
-        let sides = int(random(7, 12));
-        
-        for (let i = 0; i < sides; i++) {
-            let angle = (TWO_PI / sides) * i;
-            let angleNoise = noise(i * 0.5, centerX * 0.001, centerY * 0.001);
-            
-            // Clear angle variation based on edge complexity and chaos
-            let angleVariation = (angleNoise - 0.5) * (0.4 + params.edgeComplexity * 0.2);
-            angleVariation *= (1 + params.chaosSeepageIntensity * 0.8);
-            angle += angleVariation;
-            
-            let radiusNoise = noise(i * 0.3 + 100, centerX * 0.001, centerY * 0.001);
-            let radiusVar = baseRadius * (0.4 + radiusNoise * (0.6 + params.edgeComplexity * 0.2));
-            
-            // Apply chaos to radius
-            radiusVar *= (0.8 + params.chaosSeepageIntensity * 0.4 * radiusNoise);
-            
-            let x = centerX + cos(angle) * radiusVar;
-            let y = centerY + sin(angle) * radiusVar;
-            vertices.push({x: x, y: y});
-        }
-        
-        // Apply deformation rounds - MORE VISIBLE EFFECT
-        for (let round = 0; round < complexity; round++) {
-            let newVertices = [];
-            
-            for (let i = 0; i < vertices.length; i++) {
-                let current = vertices[i];
-                let next = vertices[(i + 1) % vertices.length];
-                
-                newVertices.push(current);
-                
-                let midX = (current.x + next.x) / 2;
-                let midY = (current.y + next.y) / 2;
-                
-                let noiseX = noise(midX * 0.005, midY * 0.005, round * 0.1);
-                let noiseY = noise(midX * 0.005 + 1000, midY * 0.005, round * 0.1);
-                
-                // MUCH MORE VISIBLE deformation strength
-                let baseDeformStrength = params.deformStrength * 80; // Increased from 40
-                let chaosMultiplier = 1 + params.chaosSeepageIntensity * 1.0;
-                let deformStrength = baseDeformStrength * chaosMultiplier;
-                
-                let deformX = (noiseX - 0.5) * deformStrength;
-                let deformY = (noiseY - 0.5) * deformStrength;
-                
-                newVertices.push({
-                    x: midX + deformX,
-                    y: midY + deformY
-                });
-            }
-            vertices = newVertices;
-        }
-        
-        return vertices.length > 2 ? vertices : createFallbackShape(centerX, centerY, baseRadius);
-        
-    } catch (error) {
-        console.error("Error creating splotchy shape:", error);
-        return createFallbackShape(centerX, centerY, baseRadius);
-    }
-}
-
-function createFallbackShape(centerX, centerY, radius) {
-    let vertices = [];
-    let sides = 12;
-    
-    for (let i = 0; i < sides; i++) {
-        let angle = (TWO_PI / sides) * i;
-        let x = centerX + cos(angle) * radius;
-        let y = centerY + sin(angle) * radius;
-        vertices.push({x: x, y: y});
-    }
-    
-    return vertices;
-}
-
-// Brush creation
-function createWatercolorBrush(depthLayer = 0) {
-    try {
-        let x = random(width * 0.15, width * 0.85);
-        let y = random(height * 0.15, height * 0.85);
-        
-        // Apply chaos seepage to positioning
-        let expansion = params.chaosSeepageIntensity * 0.15;
-        x = random(width * (0.15 - expansion), width * (0.85 + expansion));
-        y = random(height * (0.15 - expansion), height * (0.85 + expansion));
-        
-        let size = random(params.brushSize * 0.7, params.brushSize * 1.3);
-        
-        let colorIndex = int(random(palettes[currentPalette].length));
-        let baseColor = palettes[currentPalette][colorIndex];
-        
-        let r = parseInt(baseColor.slice(1, 3), 16);
-        let g = parseInt(baseColor.slice(3, 5), 16);
-        let b = parseInt(baseColor.slice(5, 7), 16);
-        
-        let depthColor = calculateDepthColor({r, g, b}, x, y, depthLayer);
-        
-        // Apply chaos color variation
-        let colorVar = params.chaosSeepageIntensity * 20;
-        depthColor.r = constrain(depthColor.r + random(-colorVar, colorVar), 0, 255);
-        depthColor.g = constrain(depthColor.g + random(-colorVar, colorVar), 0, 255);
-        depthColor.b = constrain(depthColor.b + random(-colorVar, colorVar), 0, 255);
-        
-        let splotchyVertices = createSplotchyShape(x, y, size, params.edgeComplexity);
-        
-        return {
-            basePolygon: splotchyVertices,
-            r: depthColor.r,
-            g: depthColor.g,
-            b: depthColor.b,
-            x: x,
-            y: y,
-            size: size,
-            depth: depthLayer,
-            originalColor: baseColor
-        };
-    } catch (error) {
-        console.error("Error creating brush:", error);
-        return null;
-    }
-}
-
-function findNearbyBrushes(brush, allBrushes, maxDistance) {
-    let nearby = [];
-    
-    for (let other of allBrushes) {
-        if (other !== brush) {
-            let distance = dist(brush.x, brush.y, other.x, other.y);
-            if (distance < maxDistance) {
-                nearby.push(other);
-            }
-        }
-    }
-    
-    return nearby;
-}
-
-// Drawing with CLEAR parameter effects
-function drawWatercolorLayer(brush, layerIndex, allBrushes) {
-    try {
-        if (!brush || !brush.basePolygon || brush.basePolygon.length < 3) {
-            return;
-        }
-        
-        let maxBleedDistance = (params.brushSize * 1.5) * params.bleedingIntensity;
-        let nearbyBrushes = findNearbyBrushes(brush, allBrushes, maxBleedDistance);
-        
-        let bleedColor = createColorBleedEffect(brush.x, brush.y, brush.originalColor, nearbyBrushes);
-        
-        let variation = map(layerIndex, 0, params.layersPerBrush, 1.0, 0.6);
-        
-        // CLEAR position jitter effect
-        let positionJitter = variation * 10;
-        positionJitter *= (1 + params.chaosSeepageIntensity * 1.0);
-        
-        let layerVertices = createSplotchyShape(
-            brush.x + random(-positionJitter, positionJitter),
-            brush.y + random(-positionJitter, positionJitter),
-            brush.size * random(0.7 + variation * 0.2, 1.1 + variation * 0.2),
-            Math.max(2, params.edgeComplexity - 1)
-        );
-        
-        if (!layerVertices || layerVertices.length < 3) {
-            layerVertices = createFallbackShape(brush.x, brush.y, brush.size);
-        }
-        
-        blendMode(MULTIPLY);
-        
-        // CLEAR opacity effect
-        let layerOpacity = params.opacity;
-        if (params.textureMasking) {
-            layerOpacity *= random(0.6, 1.2) * params.textureIntensity;
-            layerOpacity *= map(layerIndex, 0, params.layersPerBrush, 1.2, 0.8);
-        }
-        
-        if (params.depthEffect) {
-            layerOpacity *= (1 + brush.depth * 0.3);
-        }
-        
-        fill(bleedColor.r, bleedColor.g, bleedColor.b, layerOpacity);
-        noStroke();
-        
-        beginShape();
-        for (let v of layerVertices) {
-            vertex(v.x, v.y);
-        }
-        endShape(CLOSE);
-        
-        // Wet-on-wet blending zones
-        if (params.wetOnWet && nearbyBrushes.length > 0) {
-            let wetZones = createWetOnWetLayer(brush, layerIndex, nearbyBrushes);
-            if (wetZones) {
-                for (let zone of wetZones) {
-                    fill(zone.color.r, zone.color.g, zone.color.b, zone.opacity);
-                    let zoneVertices = createSplotchyShape(zone.x, zone.y, zone.size, 2);
-                    beginShape();
-                    for (let v of zoneVertices) {
-                        vertex(v.x, v.y);
-                    }
-                    endShape(CLOSE);
-                }
-            }
-        }
-        
-        // CLEAR texture effects
-        if (params.textureMasking) {
-            let textureChance = 0.2 * params.textureIntensity;
-            let numDots = Math.floor(params.textureDensity / 400); // Use texture density parameter
-            
-            if (random() < textureChance) {
-                for (let i = 0; i < numDots; i++) {
-                    let angle = random(TWO_PI);
-                    let distance = random(brush.size * 0.2, brush.size * 1.0);
-                    
-                    // Apply chaos to texture distribution
-                    distance *= (1 + params.chaosSeepageIntensity * 0.5);
-                    
-                    let dotX = brush.x + cos(angle) * distance;
-                    let dotY = brush.y + sin(angle) * distance;
-                    let dotSize = random(0.5, 2.5) * params.textureIntensity;
-                    let dotOpacity = layerOpacity * random(0.3, 0.8) * params.textureIntensity;
-                    
-                    fill(bleedColor.r, bleedColor.g, bleedColor.b, dotOpacity);
-                    circle(dotX, dotY, dotSize);
-                }
-            }
-        }
-        
-        blendMode(BLEND);
-        
-    } catch (error) {
-        console.error("Error drawing layer:", error);
-        fill(brush.r, brush.g, brush.b, params.opacity);
-        noStroke();
-        circle(brush.x, brush.y, brush.size);
-    }
-}
-
-// Generation
-async function generateWaterscape() {
-    if (isGenerating) return;
-    isGenerating = true;
-    
-    try {
-        console.log(`🎨 Generating waterscape with ${(params.chaosSeepageIntensity * 100).toFixed(0)}% chaos seepage...`);
-        
-        randomSeed(params.randomSeed);
-        
-        background(255);
-        drawBackground();
-        
-        activeBrushes = [];
-        
-        let depthLayers = params.depthEffect ? params.depthLayers : 1;
-        
-        for (let depth = 0; depth < depthLayers; depth++) {
-            let brushesInLayer = Math.ceil(params.brushCount / depthLayers);
-            
-            for (let i = 0; i < brushesInLayer; i++) {
-                let brush = createWatercolorBrush(depth);
-                if (brush && brush.basePolygon && brush.basePolygon.length > 2) {
-                    activeBrushes.push(brush);
-                }
-            }
-        }
-        
-        console.log(`✨ Created ${activeBrushes.length} brushes`);
-        
-        if (activeBrushes.length === 0) {
-            throw new Error("No valid brushes created");
-        }
-        
-        activeBrushes.sort((a, b) => b.depth - a.depth);
-        
-        for (let layer = 0; layer < params.layersPerBrush; layer++) {
-            for (let brush of activeBrushes) {
-                drawWatercolorLayer(brush, layer, activeBrushes);
-            }
-            
-            if (layer % 3 === 0) {
-                await new Promise(resolve => setTimeout(resolve, 1));
-            }
-        }
-        
-        updateMetadata();
-        
-        console.log(`🎨 Generation complete!`);
-        
-    } catch (error) {
-        console.error('❌ Generation error:', error);
-        
-        background(255);
-        for (let i = 0; i < 8; i++) {
-            let colorIndex = int(random(palettes[currentPalette].length));
-            let baseColor = palettes[currentPalette][colorIndex];
-            let r = parseInt(baseColor.slice(1, 3), 16);
-            let g = parseInt(baseColor.slice(3, 5), 16);
-            let b = parseInt(baseColor.slice(5, 7), 16);
-            
-            fill(r, g, b, 25);
-            noStroke();
-            
-            let fallbackVertices = createSplotchyShape(
-                random(width * 0.2, width * 0.8),
-                random(height * 0.2, height * 0.8),
-                random(50, 100),
-                3
-            );
-            
-            beginShape();
-            for (let v of fallbackVertices) {
-                vertex(v.x, v.y);
-            }
-            endShape(CLOSE);
-        }
-        
-        updateMetadata();
-    } finally {
-        isGenerating = false;
-    }
-}
-
-function drawBackground() {
-    switch (params.backgroundType) {
-        case 'white':
-            background(255);
-            break;
-        case 'paper':
-            background(252, 248, 240);
-            noStroke();
-            for (let i = 0; i < 200; i++) {
-                fill(240, 235, 220, random(10, 30));
-                circle(random(width), random(height), random(0.5, 2));
-            }
-            break;
-        case 'gradient':
-            for (let y = 0; y < height; y++) {
-                let alpha = map(y, 0, height, 0, 1);
-                let r = lerp(255, 240, alpha);
-                let g = lerp(255, 248, alpha);
-                let b = lerp(255, 255, alpha);
-                stroke(r, g, b);
-                line(0, y, width, y);
-            }
-            break;
-        default:
-            background(255);
-    }
-}
-
-// UI Functions
+// Color picker functions
 function openColorPicker(colorIndex) {
     editingColorIndex = colorIndex;
     const currentColor = palettes[currentPalette][colorIndex];
@@ -513,6 +45,7 @@ function openColorPicker(colorIndex) {
     
     document.getElementById('colorPickerOverlay').style.display = 'flex';
     
+    // Setup preset colors
     const presetColorsDiv = document.getElementById('presetColors');
     presetColorsDiv.innerHTML = '';
     presetColors.forEach(color => {
@@ -523,6 +56,7 @@ function openColorPicker(colorIndex) {
         presetColorsDiv.appendChild(preset);
     });
     
+    // Setup color input listeners
     setupColorInputListeners();
 }
 
@@ -567,14 +101,221 @@ function applyColor() {
     }
 }
 
+// Update metadata display
 function updateMetadata() {
     const totalLayers = params.brushCount * params.layersPerBrush;
-    const currentPaletteInfo = document.getElementById('currentPaletteInfo');
-    const layerCountInfo = document.getElementById('layerCountInfo');
-    if (currentPaletteInfo) currentPaletteInfo.textContent = currentPalette;
-    if (layerCountInfo) layerCountInfo.textContent = totalLayers;
+    document.getElementById('currentPaletteInfo').textContent = currentPalette;
+    document.getElementById('layerCountInfo').textContent = totalLayers;
 }
 
+// Simple but effective deformation function
+function deformPolygon(vertices, complexity, strength) {
+    let result = JSON.parse(JSON.stringify(vertices)); // Deep copy
+    
+    // Apply multiple rounds of edge subdivision and deformation
+    for (let round = 0; round < complexity; round++) {
+        let newVertices = [];
+        let currentStrength = strength * (1 / (round + 1)); // Reduce strength each round
+        
+        for (let i = 0; i < result.length; i++) {
+            let current = result[i];
+            let next = result[(i + 1) % result.length];
+            
+            newVertices.push(current);
+            
+            // Create midpoint with random deformation
+            let midX = (current.x + next.x) / 2;
+            let midY = (current.y + next.y) / 2;
+            
+            // Add randomness
+            let deformX = (Math.random() - 0.5) * currentStrength * 40;
+            let deformY = (Math.random() - 0.5) * currentStrength * 40;
+            
+            newVertices.push({
+                x: midX + deformX,
+                y: midY + deformY
+            });
+        }
+        
+        result = newVertices;
+    }
+    
+    return result;
+}
+
+// Create watercolor brush
+function createWatercolorBrush() {
+    try {
+        let x = random(width * 0.2, width * 0.8);
+        let y = random(height * 0.2, height * 0.8);
+        let size = random(params.brushSize * 0.7, params.brushSize * 1.3);
+        let sides = int(random(6, 10));
+        
+        // Pick random color
+        let colorIndex = int(random(palettes[currentPalette].length));
+        let baseColor = palettes[currentPalette][colorIndex];
+        
+        // Parse color
+        let r = parseInt(baseColor.slice(1, 3), 16);
+        let g = parseInt(baseColor.slice(3, 5), 16);
+        let b = parseInt(baseColor.slice(5, 7), 16);
+        
+        // Add variation
+        r = constrain(r + random(-20, 20), 0, 255);
+        g = constrain(g + random(-20, 20), 0, 255);
+        b = constrain(b + random(-20, 20), 0, 255);
+        
+        // Create base polygon
+        let basePolygon = [];
+        for (let i = 0; i < sides; i++) {
+            let angle = (TWO_PI / sides) * i;
+            let vx = x + cos(angle) * size;
+            let vy = y + sin(angle) * size;
+            basePolygon.push({x: vx, y: vy});
+        }
+        
+        // Apply deformation
+        basePolygon = deformPolygon(basePolygon, params.edgeComplexity, params.deformStrength);
+        
+        return {
+            basePolygon: basePolygon,
+            r: r,
+            g: g,
+            b: b,
+            x: x,
+            y: y,
+            size: size
+        };
+    } catch (error) {
+        console.error("Error creating brush:", error);
+        return null;
+    }
+}
+
+// Draw watercolor layer
+function drawWatercolorLayer(brush) {
+    try {
+        if (!brush) return;
+        
+        // Create slight variation for this layer
+        let layerPolygon = brush.basePolygon.map(v => ({
+            x: v.x + random(-2, 2),
+            y: v.y + random(-2, 2)
+        }));
+        
+        // Apply minor additional deformation
+        layerPolygon = deformPolygon(layerPolygon, 2, params.deformStrength * 0.5);
+        
+        // Set color with low opacity
+        fill(brush.r, brush.g, brush.b, params.opacity);
+        noStroke();
+        
+        // Draw the shape
+        beginShape();
+        for (let v of layerPolygon) {
+            vertex(v.x, v.y);
+        }
+        endShape(CLOSE);
+        
+    } catch (error) {
+        console.error("Error drawing layer:", error);
+    }
+}
+
+function generateWaterscape() {
+    try {
+        console.log("🎨 Generating waterscape...", params);
+        
+        randomSeed(params.randomSeed);
+        
+        // Clear canvas
+        background(255);
+        drawBackground();
+        
+        // Create brushes
+        let brushes = [];
+        for (let i = 0; i < params.brushCount; i++) {
+            let brush = createWatercolorBrush();
+            if (brush) {
+                brushes.push(brush);
+            }
+        }
+        
+        console.log(`✨ Created ${brushes.length} brushes`);
+        
+        if (brushes.length === 0) {
+            throw new Error("No brushes created");
+        }
+        
+        // Draw layers
+        for (let layer = 0; layer < params.layersPerBrush; layer++) {
+            for (let brush of brushes) {
+                drawWatercolorLayer(brush);
+            }
+        }
+        
+        // Update metadata
+        updateMetadata();
+        
+        console.log("🎨 Generation complete!");
+        
+    } catch (error) {
+        console.error('❌ Generation error:', error);
+        
+        // Simple fallback that shows something
+        background(255);
+        
+        // Draw some basic watercolor-like shapes
+        for (let i = 0; i < 5; i++) {
+            let colorIndex = int(random(palettes[currentPalette].length));
+            let baseColor = palettes[currentPalette][colorIndex];
+            let r = parseInt(baseColor.slice(1, 3), 16);
+            let g = parseInt(baseColor.slice(3, 5), 16);
+            let b = parseInt(baseColor.slice(5, 7), 16);
+            
+            fill(r, g, b, 30);
+            noStroke();
+            
+            let x = random(width * 0.2, width * 0.8);
+            let y = random(height * 0.2, height * 0.8);
+            let size = random(50, 150);
+            
+            circle(x, y, size);
+        }
+        
+        updateMetadata();
+    }
+}
+
+function drawBackground() {
+    switch (params.backgroundType) {
+        case 'white':
+            background(255);
+            break;
+        case 'paper':
+            background(252, 248, 240);
+            noStroke();
+            for (let i = 0; i < 200; i++) {
+                fill(240, 235, 220, random(10, 30));
+                circle(random(width), random(height), random(0.5, 2));
+            }
+            break;
+        case 'gradient':
+            for (let y = 0; y < height; y++) {
+                let alpha = map(y, 0, height, 0, 1);
+                let r = lerp(255, 240, alpha);
+                let g = lerp(255, 248, alpha);
+                let b = lerp(255, 255, alpha);
+                stroke(r, g, b);
+                line(0, y, width, y);
+            }
+            break;
+        default:
+            background(255);
+    }
+}
+
+// UI Functions
 function updateColorPalette() {
     const paletteDiv = document.getElementById('colorPalette');
     if (!paletteDiv) return;
@@ -591,43 +332,10 @@ function updateColorPalette() {
     });
 }
 
-function updateEffectControls() {
-    const bleedingControls = document.querySelectorAll('.bleeding-control');
-    const isBleedingEnabled = params.colorBleeding;
-    bleedingControls.forEach(control => {
-        control.style.opacity = isBleedingEnabled ? '1' : '0.5';
-        const slider = control.querySelector('input[type="range"]');
-        if (slider) slider.disabled = !isBleedingEnabled;
-    });
-    
-    const wetControls = document.querySelectorAll('.wet-control');
-    const isWetEnabled = params.wetOnWet;
-    wetControls.forEach(control => {
-        control.style.opacity = isWetEnabled ? '1' : '0.5';
-        const slider = control.querySelector('input[type="range"]');
-        if (slider) slider.disabled = !isWetEnabled;
-    });
-    
-    const depthControls = document.querySelectorAll('.depth-control');
-    const isDepthEnabled = params.depthEffect;
-    depthControls.forEach(control => {
-        control.style.opacity = isDepthEnabled ? '1' : '0.5';
-        const slider = control.querySelector('input[type="range"]');
-        if (slider) slider.disabled = !isDepthEnabled;
-    });
-    
-    const textureControls = document.querySelectorAll('.texture-control');
-    const isTextureEnabled = params.textureMasking;
-    textureControls.forEach(control => {
-        control.style.opacity = isTextureEnabled ? '1' : '0.5';
-        const slider = control.querySelector('input[type="range"]');
-        if (slider) slider.disabled = !isTextureEnabled;
-    });
-}
-
 function setupControls() {
     console.log("🎛️ Setting up controls...");
     
+    // Palette selector
     const paletteSelect = document.getElementById('paletteSelect');
     if (paletteSelect) {
         paletteSelect.addEventListener('change', (e) => {
@@ -637,34 +345,28 @@ function setupControls() {
         });
     }
 
+    // Parameter controls
     Object.keys(params).forEach(param => {
         const control = document.getElementById(param);
         const valueDisplay = document.getElementById(param + 'Value');
         
         if (control && valueDisplay) {
-            if (control.type === 'checkbox') {
-                control.addEventListener('change', (e) => {
-                    params[param] = e.target.checked;
-                    valueDisplay.textContent = params[param] ? 'On' : 'Off';
-                    updateEffectControls();
-                    generateNew();
-                });
-            } else {
-                control.addEventListener('input', (e) => {
-                    if (param === 'deformStrength' || param === 'textureIntensity' || param === 'bleedingIntensity' || param === 'chaosSeepageIntensity') {
-                        params[param] = parseFloat(e.target.value);
-                        valueDisplay.textContent = params[param].toFixed(1);
-                    } else {
-                        params[param] = parseInt(e.target.value);
-                        valueDisplay.textContent = params[param];
-                    }
-                    
-                    generateNew();
-                });
-            }
+            control.addEventListener('input', (e) => {
+                params[param] = param === 'deformStrength' ? 
+                    parseFloat(e.target.value) : 
+                    parseInt(e.target.value);
+                
+                valueDisplay.textContent = 
+                    param === 'deformStrength' ? 
+                    params[param].toFixed(1) : 
+                    params[param];
+                
+                generateNew();
+            });
         }
     });
 
+    // Background type
     const backgroundType = document.getElementById('backgroundType');
     if (backgroundType) {
         backgroundType.addEventListener('change', (e) => {
@@ -673,6 +375,7 @@ function setupControls() {
         });
     }
 
+    // Close color picker when clicking overlay
     const overlay = document.getElementById('colorPickerOverlay');
     if (overlay) {
         overlay.addEventListener('click', (e) => {
@@ -682,16 +385,14 @@ function setupControls() {
         });
     }
 
+    // ESC key to close color picker
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && editingColorIndex >= 0) {
             closeColorPicker();
         }
     });
-
-    updateEffectControls();
 }
 
-// P5.js setup
 function setup() {
     try {
         console.log("🚀 Setting up canvas...");
@@ -712,10 +413,8 @@ function setup() {
 }
 
 function generateNew() {
-    if (!isGenerating) {
-        console.log("🔄 Generate new called");
-        generateWaterscape();
-    }
+    console.log("🔄 Generate new called");
+    generateWaterscape();
 }
 
 function savePNG() {
@@ -734,10 +433,10 @@ function draw() {
     // Static generation
 }
 
+// Error handling
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     console.error('❌ JavaScript Error:', msg, 'at line', lineNo);
     return false;
 };
 
-console.log("✅ Waterscape Studio v2.6 loaded - Restored FX Visibility!");
-console.log("🎛️ All watercolor FX parameters now have clear, visible effects");
+console.log("✅ Waterscape Studio v2.1 loaded successfully");
